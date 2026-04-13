@@ -1,58 +1,47 @@
+// Vercel Serverless Function (Node.js runtime)
+// 设置最大执行时间为 60 秒（免费版上限）
 export const config = {
-  runtime: 'edge',
+  maxDuration: 60,
 }
 
-export default async function handler(req) {
-  // CORS 预检
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Target-Path')
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, X-Target-Path',
-      },
-    })
+    return res.status(200).end()
   }
 
   if (req.method !== 'POST') {
-    return Response.json({ error: 'Method not allowed' }, { status: 405 })
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
   const apiKey = process.env.VITE_TONGYI_API_KEY
   if (!apiKey) {
-    return Response.json({ error: 'API Key not configured' }, { status: 500 })
+    return res.status(500).json({ error: 'API Key not configured' })
   }
 
-  const targetPath = req.headers.get('x-target-path')
+  const targetPath = req.headers['x-target-path']
   if (!targetPath) {
-    return Response.json({ error: 'Missing X-Target-Path' }, { status: 400 })
+    return res.status(400).json({ error: 'Missing X-Target-Path' })
   }
 
   const targetUrl = `https://dashscope.aliyuncs.com${targetPath}`
 
   try {
-    const body = await req.json()
-
-    const apiRes = await fetch(targetUrl, {
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(req.body),
     })
 
-    const data = await apiRes.json()
-
-    return Response.json(data, {
-      status: apiRes.status,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-    })
+    const data = await response.json()
+    return res.status(response.status).json(data)
   } catch (error) {
-    return Response.json(
-      { error: error.message || 'Proxy request failed' },
-      { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } }
-    )
+    return res.status(500).json({ error: error.message || 'Proxy failed' })
   }
 }

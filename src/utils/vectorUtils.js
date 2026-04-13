@@ -53,14 +53,10 @@ const smartChunkText = (text, { chunkSize = 300, overlap = 50 } = {}) => {
   return merged
 }
 
-// ===== 向量生成 =====
+// ===== 向量生成（批量，减少 API 调用次数）=====
 const generateVectorsForChunks = async (textChunks) => {
-  return Promise.all(
-    textChunks.map(async (chunk) => {
-      const vector = await embedding.embedQuery(chunk)
-      return { text: chunk, vector }
-    })
-  )
+  const vectors = await embedding.embedBatch(textChunks)
+  return textChunks.map((chunk, i) => ({ text: chunk, vector: vectors[i] }))
 }
 
 // ===== 存储向量到 IndexedDB =====
