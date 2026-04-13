@@ -3,9 +3,9 @@ import db from './db.js'
 
 // ===== 智能分块：段落感知 + 重叠分块 =====
 const smartChunkText = (text, { chunkSize = 300, overlap = 50 } = {}) => {
-  // 先按段落分割（双换行、单换行、Markdown 标题）
+  // 按 Markdown 标题、多换行、或"X、""X."等中文大纲格式分段
   const paragraphs = text
-    .split(/\n{2,}|\n(?=#{1,6}\s)/)
+    .split(/\n(?=#{1,6}\s*)|(?:\r?\n){2,}|\n(?=[一二三四五六七八九十]+[、.])|(?:\r?\n)(?=\d+[\.\、])/)
     .map(p => p.trim())
     .filter(p => p.length > 0)
 
@@ -13,36 +13,38 @@ const smartChunkText = (text, { chunkSize = 300, overlap = 50 } = {}) => {
 
   for (const para of paragraphs) {
     if (para.length <= chunkSize) {
-      // 短段落直接作为一个块
       chunks.push(para)
     } else {
-      // 长段落按 chunkSize 切分，带 overlap 重叠
+      // 长段落按句子断句切分
       let start = 0
       while (start < para.length) {
-        let end = start + chunkSize
-        // 尝试在句号、问号、感叹号处断句
+        let end = Math.min(start + chunkSize, para.length)
+        // 在 60%-100% 区间找句号断句
         if (end < para.length) {
-          const sentenceEnd = para.substring(start + chunkSize * 0.6, end)
-            .search(/[。！？.!?]\s*/)
+          const searchStart = start + Math.floor(chunkSize * 0.6)
+          const searchZone = para.substring(searchStart, end)
+          const sentenceEnd = searchZone.search(/[。！？；\n.!?;]\s*/)
           if (sentenceEnd > -1) {
-            end = start + Math.floor(chunkSize * 0.6) + sentenceEnd + 1
+            end = searchStart + sentenceEnd + 1
           }
         }
-        chunks.push(para.slice(start, end).trim())
-        start = end - overlap
-        if (start < 0) start = 0
-        // 防止死循环：如果 overlap >= 实际步进
-        if (start >= para.length) break
+        const chunk = para.slice(start, end).trim()
+        if (chunk) chunks.push(chunk)
+        // 下一块起点带重叠
+        const nextStart = end - overlap
+        if (nextStart <= start) break // 防止死循环
+        start = nextStart
         if (end >= para.length) break
       }
     }
   }
 
-  // 合并过短的块（< 50 字的块合并到前一个）
+  // 合并过短的块（< 30 字合并到前一个，保留标题类短块）
   const merged = []
   for (const chunk of chunks) {
-    if (merged.length > 0 && chunk.length < 50) {
-      merged[merged.length - 1] += ' ' + chunk
+    const isHeading = /^#{1,6}\s|^[一二三四五六七八九十]+[、.]|^\d+[\.\、]/.test(chunk)
+    if (merged.length > 0 && chunk.length < 30 && !isHeading) {
+      merged[merged.length - 1] += '\n' + chunk
     } else {
       merged.push(chunk)
     }

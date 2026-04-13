@@ -56,12 +56,14 @@ ${context}`
 
   // 3. 调用通义千问
   try {
+    const headers = { 'Content-Type': 'application/json' }
+    if (TONGYI_API_KEY) {
+      headers['Authorization'] = `Bearer ${TONGYI_API_KEY}`
+    }
+
     const response = await fetch(CHAT_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${TONGYI_API_KEY}`,
-      },
+      headers,
       body: JSON.stringify({
         model: 'qwen-turbo',
         input: { messages },

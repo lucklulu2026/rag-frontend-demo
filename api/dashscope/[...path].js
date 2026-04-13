@@ -1,13 +1,12 @@
-// Vercel Serverless Function：通用代理，转发所有 /api/dashscope/* 请求到通义 API
-// 文件路径 api/dashscope/[...path].js 会匹配 /api/dashscope/ 下的所有子路径
+// Vercel Serverless Function：代理通义千问 API
+// Node 16 没有全局 fetch，用 https 模块
+const https = require('https')
 
-export default async function handler(req, res) {
-  // 设置 CORS 头（允许前端跨域调用）
+module.exports = function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
-  // 处理预检请求
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
   }
@@ -16,31 +15,43 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  // API Key 从 Vercel 环境变量读取（在 Vercel 控制台配置）
   const apiKey = process.env.VITE_TONGYI_API_KEY
-
   if (!apiKey) {
-    return res.status(500).json({ error: 'API Key not configured' })
+    return res.status(500).json({ error: 'API Key not configured on server' })
   }
 
-  // 提取实际路径：/api/dashscope/xxx/yyy -> /xxx/yyy
   const actualPath = req.url.replace(/^\/api\/dashscope/, '')
-  const targetUrl = `https://dashscope.aliyuncs.com${actualPath}`
+  const postData = JSON.stringify(req.body)
 
-  try {
-    const response = await fetch(targetUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(req.body),
-    })
-
-    const data = await response.json()
-    return res.status(response.status).json(data)
-  } catch (error) {
-    console.error('Proxy error:', error)
-    return res.status(500).json({ error: error.message })
+  const options = {
+    hostname: 'dashscope.aliyuncs.com',
+    path: actualPath,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Length': Buffer.byteLength(postData),
+    },
   }
+
+  const proxyReq = https.request(options, (proxyRes) => {
+    let data = ''
+    proxyRes.on('data', (chunk) => { data += chunk })
+    proxyRes.on('end', () => {
+      try {
+        const json = JSON.parse(data)
+        res.status(proxyRes.statusCode).json(json)
+      } catch (e) {
+        res.status(502).json({ error: 'Invalid response from API', raw: data.substring(0, 200) })
+      }
+    })
+  })
+
+  proxyReq.on('error', (error) => {
+    console.error('Proxy error:', error)
+    res.status(500).json({ error: error.message })
+  })
+
+  proxyReq.write(postData)
+  proxyReq.end()
 }

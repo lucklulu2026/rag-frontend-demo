@@ -1,21 +1,18 @@
 // 通义千问 Embedding 封装（适配 DashScope API）
-const TONGYI_API_KEY = import.meta.env.VITE_TONGYI_API_KEY;
-// 通过 Vite 代理转发，避免浏览器 CORS 限制
-const EMBEDDING_URL = "/dashscope/api/v1/services/embeddings/text-embedding/text-embedding";
+const TONGYI_API_KEY = import.meta.env.VITE_TONGYI_API_KEY
+const EMBEDDING_URL = "/dashscope/api/v1/services/embeddings/text-embedding/text-embedding"
 
 const embedding = {
-  /**
-   * 对单个文本生成向量
-   * @param {string} text - 输入文本
-   * @returns {Promise<number[]>} 向量数组
-   */
   async embedQuery(text) {
+    const headers = { "Content-Type": "application/json" }
+    // 本地开发时前端带 key，线上由 Serverless Function 注入
+    if (TONGYI_API_KEY) {
+      headers["Authorization"] = `Bearer ${TONGYI_API_KEY}`
+    }
+
     const response = await fetch(EMBEDDING_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${TONGYI_API_KEY}`,
-      },
+      headers,
       body: JSON.stringify({
         model: "text-embedding-v2",
         input: { texts: [text] },
