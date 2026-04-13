@@ -1,9 +1,69 @@
 import embedding from './embedding.js'
 import db from './db.js'
 
-// ===== 智能分块：段落感知 + 重叠分块 =====
+// ===== 检测是否为代码文件 =====
+const isCodeContent = (text) => {
+  const codeIndicators = [
+    /^(import|export|const|let|var|function|class|async|from)\s/m,
+    /\{[\s\S]*\}/,
+    /=>\s*\{/,
+    /\bdef\s+\w+/,
+    /\bpublic\s+(class|void|static)/,
+  ]
+  let score = 0
+  for (const re of codeIndicators) {
+    if (re.test(text)) score++
+  }
+  return score >= 2
+}
+
+// ===== 代码文件分块：按函数/代码块为单位 =====
+const chunkCodeText = (text, { chunkSize = 500 } = {}) => {
+  // 按空行 + 函数/类声明分割
+  const blocks = text.split(/\n(?=(?:\/\*\*|\/\/|export|const\s+\w+\s*=|function\s|class\s|async\s+function|import\s))/g)
+    .map(b => b.trim())
+    .filter(b => b.length > 0)
+
+  const chunks = []
+  let current = ''
+
+  for (const block of blocks) {
+    // 如果当前块 + 新块不超限，合并
+    if (current && (current.length + block.length + 1) <= chunkSize) {
+      current += '\n' + block
+    } else {
+      if (current) chunks.push(current)
+      // 如果单个块就超限，按行切分
+      if (block.length > chunkSize) {
+        const lines = block.split('\n')
+        let part = ''
+        for (const line of lines) {
+          if (part && (part.length + line.length + 1) > chunkSize) {
+            chunks.push(part)
+            part = line
+          } else {
+            part = part ? part + '\n' + line : line
+          }
+        }
+        current = part
+      } else {
+        current = block
+      }
+    }
+  }
+  if (current) chunks.push(current)
+
+  return chunks
+}
+
+// ===== 智能分块：自动识别代码/文档，选择不同策略 =====
 const smartChunkText = (text, { chunkSize = 300, overlap = 50 } = {}) => {
-  // 按 Markdown 标题、多换行、或"X、""X."等中文大纲格式分段
+  // 代码文件用代码分块策略
+  if (isCodeContent(text)) {
+    return chunkCodeText(text, { chunkSize: 500 })
+  }
+
+  // 普通文档：段落感知 + 重叠分块
   const paragraphs = text
     .split(/\n(?=#{1,6}\s*)|(?:\r?\n){2,}|\n(?=[一二三四五六七八九十]+[、.])|(?:\r?\n)(?=\d+[\.\、])/)
     .map(p => p.trim())
@@ -15,11 +75,9 @@ const smartChunkText = (text, { chunkSize = 300, overlap = 50 } = {}) => {
     if (para.length <= chunkSize) {
       chunks.push(para)
     } else {
-      // 长段落按句子断句切分
       let start = 0
       while (start < para.length) {
         let end = Math.min(start + chunkSize, para.length)
-        // 在 60%-100% 区间找句号断句
         if (end < para.length) {
           const searchStart = start + Math.floor(chunkSize * 0.6)
           const searchZone = para.substring(searchStart, end)
@@ -30,16 +88,14 @@ const smartChunkText = (text, { chunkSize = 300, overlap = 50 } = {}) => {
         }
         const chunk = para.slice(start, end).trim()
         if (chunk) chunks.push(chunk)
-        // 下一块起点带重叠
         const nextStart = end - overlap
-        if (nextStart <= start) break // 防止死循环
+        if (nextStart <= start) break
         start = nextStart
         if (end >= para.length) break
       }
     }
   }
 
-  // 合并过短的块（< 30 字合并到前一个，保留标题类短块）
   const merged = []
   for (const chunk of chunks) {
     const isHeading = /^#{1,6}\s|^[一二三四五六七八九十]+[、.]|^\d+[\.\、]/.test(chunk)

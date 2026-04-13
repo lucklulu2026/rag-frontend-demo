@@ -8,16 +8,22 @@ db.version(1).stores({
   qaHistory: '++id, time'
 })
 
-// v2: 文档增加 tag 字段索引
 db.version(2).stores({
   documents: 'fileName, uploadTime, tag',
   vectors: '++id, fileName',
   qaHistory: '++id, time'
 }).upgrade(tx => {
-  // 给旧文档设置默认标签
   return tx.table('documents').toCollection().modify(doc => {
     if (!doc.tag) doc.tag = '默认'
   })
+})
+
+// v3: 增加会话表，每个会话包含多条对话
+db.version(3).stores({
+  documents: 'fileName, uploadTime, tag',
+  vectors: '++id, fileName',
+  qaHistory: '++id, time',
+  sessions: 'id, title, createdAt'
 })
 
 export default db

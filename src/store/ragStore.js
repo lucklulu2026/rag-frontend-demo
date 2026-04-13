@@ -1,15 +1,20 @@
 import { defineStore } from 'pinia'
 import db from '../utils/db.js'
 
+const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+// Dexie 无法存储 Vue 的 Proxy 对象，需要深拷贝成纯对象
+const toRaw = (obj) => JSON.parse(JSON.stringify(obj))
+
 export const useRagStore = defineStore('rag', {
   state: () => ({
     documentList: [],
-    qaHistory: [],
     tags: [],
+    // 会话管理
+    sessions: [],         // 所有会话列表 [{id, title, messages, createdAt}]
+    currentSessionId: null,
     initialized: false,
   }),
   getters: {
-    // 按标签分组的文档
     groupedDocuments(state) {
       const groups = {}
       for (const doc of state.documentList) {
@@ -18,32 +23,94 @@ export const useRagStore = defineStore('rag', {
         groups[tag].push(doc)
       }
       return groups
-    }
+    },
+    currentSession(state) {
+      return state.sessions.find(s => s.id === state.currentSessionId) || null
+    },
+    currentChat(state) {
+      const session = state.sessions.find(s => s.id === state.currentSessionId)
+      return session ? session.messages : []
+    },
   },
   actions: {
     async init() {
       if (this.initialized) return
       this.documentList = await db.documents.toArray()
-      // 给没有 tag 的旧文档补上默认标签
-      this.documentList.forEach(doc => {
-        if (!doc.tag) doc.tag = '默认'
-      })
-      // 提取所有标签
+      this.documentList.forEach(doc => { if (!doc.tag) doc.tag = '默认' })
       this.tags = [...new Set(this.documentList.map(d => d.tag))]
       if (this.tags.length === 0) this.tags = ['默认']
-      this.qaHistory = (await db.qaHistory.toArray()).map(item => ({
-        question: item.question,
-        answer: item.answer,
-        relatedTexts: item.relatedTexts || [],
-        time: item.time
-      }))
+      // 加载会话
+      this.sessions = await db.sessions.toArray()
+      this.sessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       this.initialized = true
     },
 
-    addTag(tag) {
-      if (tag && !this.tags.includes(tag)) {
-        this.tags.push(tag)
+    // ===== 会话管理 =====
+    async newChat() {
+      // 如果当前会话是空的，直接复用，不重复创建
+      const current = this.sessions.find(s => s.id === this.currentSessionId)
+      if (current && current.messages.length === 0) return current.id
+
+      const session = {
+        id: genId(),
+        title: '新对话',
+        messages: [],
+        createdAt: new Date().toISOString(),
       }
+      this.sessions.unshift(session)
+      this.currentSessionId = session.id
+      // 不存 DB，等有第一条消息时再持久化
+      return session.id
+    },
+
+    async switchSession(sessionId) {
+      this.currentSessionId = sessionId
+    },
+
+    async addMessage(question, answer, relatedTexts = []) {
+      // 如果没有当前会话，自动创建
+      if (!this.currentSessionId) {
+        await this.newChat()
+      }
+      const session = this.sessions.find(s => s.id === this.currentSessionId)
+      if (!session) return
+
+      const record = { question, answer, relatedTexts, time: new Date().toLocaleString() }
+      session.messages.push(record)
+
+      // 第一条消息时，用问题作为会话标题
+      if (session.messages.length === 1) {
+        session.title = question.length > 20 ? question.slice(0, 20) + '...' : question
+      }
+
+      await db.sessions.put(toRaw(session))
+    },
+
+    async renameSession(sessionId, newTitle) {
+      const session = this.sessions.find(s => s.id === sessionId)
+      if (session) {
+        session.title = newTitle
+        await db.sessions.put(toRaw(session))
+      }
+    },
+
+    async deleteSession(sessionId) {
+      this.sessions = this.sessions.filter(s => s.id !== sessionId)
+      await db.sessions.delete(sessionId)
+      if (this.currentSessionId === sessionId) {
+        this.currentSessionId = this.sessions.length > 0 ? this.sessions[0].id : null
+      }
+    },
+
+    async clearAllSessions() {
+      this.sessions = []
+      this.currentSessionId = null
+      await db.sessions.clear()
+    },
+
+    // ===== 文档管理 =====
+    addTag(tag) {
+      if (tag && !this.tags.includes(tag)) this.tags.push(tag)
     },
 
     async addDocument(doc) {
@@ -59,21 +126,11 @@ export const useRagStore = defineStore('rag', {
       }
     },
 
-    async updateDocTag(fileName, newTag) {
-      const doc = this.documentList.find(d => d.fileName === fileName)
-      if (doc) {
-        doc.tag = newTag
-        this.addTag(newTag)
-        await db.documents.put({ ...doc })
-      }
-    },
-
     async removeDocument(fileName) {
       this.documentList = this.documentList.filter(d => d.fileName !== fileName)
       await db.documents.delete(fileName)
     },
 
-    // 删除标签：该标签下的文档全部移到"默认"
     async deleteTag(tag) {
       if (tag === '默认') return
       for (const doc of this.documentList) {
@@ -84,16 +141,5 @@ export const useRagStore = defineStore('rag', {
       }
       this.tags = this.tags.filter(t => t !== tag)
     },
-
-    async addQaHistory(question, answer, relatedTexts = []) {
-      const record = { question, answer, relatedTexts, time: new Date().toLocaleString() }
-      this.qaHistory.push(record)
-      await db.qaHistory.add(record)
-    },
-
-    async clearQaHistory() {
-      this.qaHistory = []
-      await db.qaHistory.clear()
-    }
   }
 })

@@ -149,3 +149,113 @@ const scrollToFeatures = () => {
   document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })
 }
 </script>
+
+<style lang="scss" scoped>
+.intro-page { min-height: 100vh; background: #fff; color: var(--text); }
+
+// 导航
+.intro-nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  background: rgba(255,255,255,0.9); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border); z-index: 100;
+
+  &-inner { max-width: 1100px; margin: 0 auto; padding: 0 32px; height: 64px; display: flex; align-items: center; justify-content: space-between; }
+  &-btn {
+    padding: 8px 20px; background: var(--primary); color: #fff; border-radius: 8px;
+    font-size: 14px; font-weight: 500; text-decoration: none; transition: background 0.2s;
+    &:hover { background: var(--primary-hover); }
+  }
+}
+
+.intro-logo { font-size: 18px; font-weight: 700; color: var(--text); }
+
+// Hero
+.intro-hero {
+  padding: 140px 32px 80px; text-align: center;
+  background: linear-gradient(180deg, #f0f4ff 0%, #fff 100%);
+
+  &-inner { max-width: 700px; margin: 0 auto; }
+  &-badge { display: inline-block; padding: 6px 16px; background: #e8f0fe; color: var(--primary); border-radius: 20px; font-size: 14px; font-weight: 500; margin-bottom: 24px; }
+  &-title { font-size: 48px; font-weight: 800; line-height: 1.2; color: var(--text); margin-bottom: 20px; letter-spacing: -1px; }
+  &-desc { font-size: 18px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 36px; }
+  &-actions { display: flex; gap: 16px; justify-content: center; align-items: center; }
+}
+
+.intro-btn {
+  &-primary {
+    display: inline-block; padding: 12px 32px; background: var(--primary); color: #fff;
+    border-radius: 10px; font-size: 16px; font-weight: 600; text-decoration: none;
+    transition: all 0.2s; box-shadow: 0 4px 14px rgba(79,110,247,0.3);
+    &:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(79,110,247,0.4); }
+  }
+  &-lg { padding: 16px 40px; font-size: 18px; }
+  &-secondary {
+    padding: 12px 24px; color: var(--text-secondary); font-size: 16px;
+    text-decoration: none; cursor: pointer; transition: color 0.2s;
+    &:hover { color: var(--primary); }
+  }
+}
+
+// 通用 section
+.intro-section {
+  &-inner { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+  &-title { font-size: 32px; font-weight: 700; text-align: center; margin-bottom: 48px; color: var(--text); }
+}
+
+// 功能卡片
+.intro-features { padding: 80px 0; background: var(--bg); }
+.intro-feature {
+  &-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  &-card {
+    background: #fff; padding: 32px 28px; border-radius: 16px;
+    border: 1px solid var(--border); transition: all 0.2s;
+    &:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.06); transform: translateY(-2px); }
+    h3 { font-size: 18px; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+    p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+  }
+  &-icon { font-size: 36px; margin-bottom: 16px; }
+}
+
+// 步骤
+.intro-steps { padding: 80px 0; }
+.intro-steps-grid { display: flex; align-items: center; justify-content: center; gap: 24px; }
+.intro-step {
+  text-align: center; flex: 1; max-width: 260px;
+  &-num { width: 48px; height: 48px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+  h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  p { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+  &-arrow { font-size: 24px; color: #c9cdd4; flex-shrink: 0; }
+}
+
+// 场景
+.intro-scenarios { padding: 80px 0; background: var(--bg); }
+.intro-scenario {
+  &-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  &-item {
+    display: flex; align-items: flex-start; gap: 16px; padding: 24px;
+    background: #fff; border-radius: 12px; border: 1px solid var(--border);
+    h4 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    p { font-size: 14px; color: var(--text-secondary); line-height: 1.5; }
+  }
+  &-icon { font-size: 32px; flex-shrink: 0; }
+}
+
+// CTA
+.intro-cta {
+  padding: 80px 0; text-align: center;
+  h2 { font-size: 36px; font-weight: 700; margin-bottom: 12px; }
+  p { font-size: 16px; color: var(--text-secondary); margin-bottom: 32px; }
+}
+
+// Footer
+.intro-footer { padding: 32px; text-align: center; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-secondary); }
+
+// 响应式
+@media (max-width: 768px) {
+  .intro-hero-title { font-size: 32px; }
+  .intro-feature-grid { grid-template-columns: 1fr; }
+  .intro-steps-grid { flex-direction: column; }
+  .intro-step-arrow { transform: rotate(90deg); }
+  .intro-scenario-grid { grid-template-columns: 1fr; }
+}
+</style>
