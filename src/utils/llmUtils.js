@@ -1,7 +1,7 @@
 import { searchSimilar } from './vectorUtils.js'
+import { callDashScope } from './request.js'
 
-const TONGYI_API_KEY = import.meta.env.VITE_TONGYI_API_KEY
-const CHAT_URL = '/dashscope/api/v1/services/aigc/text-generation/generation'
+const CHAT_PATH = '/api/v1/services/aigc/text-generation/generation'
 
 /**
  * RAG 问答：向量检索 + 多轮对话 + 引用溯源
@@ -56,27 +56,12 @@ ${context}`
 
   // 3. 调用通义千问
   try {
-    const headers = { 'Content-Type': 'application/json' }
-    if (TONGYI_API_KEY) {
-      headers['Authorization'] = `Bearer ${TONGYI_API_KEY}`
-    }
-
-    const response = await fetch(CHAT_URL, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model: 'qwen-turbo',
-        input: { messages },
-        parameters: { temperature: 0.7, max_tokens: 1500 },
-      }),
+    const data = await callDashScope(CHAT_PATH, {
+      model: 'qwen-turbo',
+      input: { messages },
+      parameters: { temperature: 0.7, max_tokens: 1500 },
     })
 
-    if (!response.ok) {
-      const errText = await response.text()
-      throw new Error(`API 请求失败 (${response.status}): ${errText}`)
-    }
-
-    const data = await response.json()
     const answer = data.output?.text || '抱歉，未能获取到有效的回答。'
     return { answer, references }
   } catch (error) {
