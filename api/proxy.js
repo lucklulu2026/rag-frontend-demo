@@ -1,7 +1,6 @@
-// Vercel Serverless Function：统一代理通义千问 API
-const https = require('https')
+import https from 'https'
 
-module.exports = function handler(req, res) {
+export default function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Target-Path')
@@ -19,7 +18,6 @@ module.exports = function handler(req, res) {
     return res.status(500).json({ error: 'API Key not configured on server' })
   }
 
-  // 从自定义 header 获取目标 API 路径
   const targetPath = req.headers['x-target-path']
   if (!targetPath) {
     return res.status(400).json({ error: 'Missing X-Target-Path header' })
