@@ -1,0 +1,26 @@
+{
+    "sourceFile": "src/components/HistoryRecord.vue",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 2,
+            "patches": [
+                {
+                    "date": 1775725222185,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1775725230708,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,28 +1,23 @@\n <template>\r\n-    <div class=\"history-container\">\r\n-      <h3>问答历史</h3>\r\n-      <div class=\"history-list\">\r\n-        <div \r\n-          class=\"history-item\"\r\n-          v-for=\"(item, index) in ragStore.qaHistory\"\r\n-          :key=\"index\"\r\n-          @click=\"showHistory(item)\"\r\n-        >\r\n-          <p>问：{{ item.question }}</p>\r\n-          <p style=\"font-size: 12px; color: #666; margin-top: 4px;\">答：{{ item.answer.slice(0, 30) }}...</p>\r\n-        </div>\r\n-        <p v-if=\"!ragStore.qaHistory.length\" style=\"font-size: 12px; color: #999;\">暂无问答历史</p>\r\n+  <div class=\"history-container\">\r\n+    <h3>问答历史</h3>\r\n+    <div class=\"history-list\">\r\n+      <div class=\"history-item\" v-for=\"(item, index) in ragStore.qaHistory\" :key=\"index\" @click=\"showHistory(item)\">\r\n+        <p>问：{{ item.question }}</p>\r\n+        <p style=\"font-size: 12px; color: #666; margin-top: 4px;\">答：{{ item.answer.slice(0, 30) }}...</p>\r\n       </div>\r\n+      <p v-if=\"!ragStore.qaHistory.length\" style=\"font-size: 12px; color: #999;\">暂无问答历史</p>\r\n     </div>\r\n-  </template>\r\n-  \r\n-  <script setup>\r\n-  import { useRagStore } from '../store/ragStore'\r\n-  \r\n\\ No newline at end of file\n-  const ragStore = useRagStore()\r\n-  \r\n-  // 显示历史问答详情（后续完善）\r\n-  const showHistory = (item) => {\r\n-    alert(`问题：${item.question}\\n回答：${item.answer}`)\r\n-  }\r\n-  </script>\n+  </div>\r\n+</template>\r\n+\r\n+<script setup>\r\n+import { useRagStore } from '../store/ragStore'\r\n+\r\n+const ragStore = useRagStore()\r\n+\r\n+// 显示历史问答详情（后续完善）\r\n+const showHistory = (item) => {\r\n+  alert(`问题：${item.question}\\n回答：${item.answer}`)\r\n+}\r\n+</script>\n\\ No newline at end of file\n"
+                },
+                {
+                    "date": 1775800810467,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -0,0 +1,28 @@\n+<template>\r\n+  <div class=\"history-container\">\r\n+    <h3>问答历史</h3>\r\n+    <div class=\"history-list\">\r\n+      <div \r\n+        class=\"history-item\"\r\n+        v-for=\"(item, index) in ragStore.qaHistory\"\r\n+        :key=\"index\"\r\n+        @click=\"showHistory(item)\"\r\n+      >\r\n+        <p>问：{{ item.question }}</p>\r\n+        <p style=\"font-size: 12px; color: #666; margin-top: 4px;\">答：{{ item.answer.slice(0, 30) }}...</p>\r\n+      </div>\r\n+      <p v-if=\"!ragStore.qaHistory.length\" style=\"font-size: 12px; color: #999;\">暂无问答历史</p>\r\n+    </div>\r\n+  </div>\r\n+</template>\r\n+\r\n+<script setup>\r\n+import { useRagStore } from '../store/ragStore'\r\n+\r\n+const ragStore = useRagStore()\r\n+\r\n+// 显示历史问答详情（后续完善，此处先占位）\r\n+const showHistory = (item) => {\r\n+  alert(`问题：${item.question}\\n回答：${item.answer}`)\r\n+}\r\n+</script>\n\\ No newline at end of file\n"
+                }
+            ],
+            "date": 1775725222185,
+            "name": "Commit-0",
+            "content": "<template>\r\n    <div class=\"history-container\">\r\n      <h3>问答历史</h3>\r\n      <div class=\"history-list\">\r\n        <div \r\n          class=\"history-item\"\r\n          v-for=\"(item, index) in ragStore.qaHistory\"\r\n          :key=\"index\"\r\n          @click=\"showHistory(item)\"\r\n        >\r\n          <p>问：{{ item.question }}</p>\r\n          <p style=\"font-size: 12px; color: #666; margin-top: 4px;\">答：{{ item.answer.slice(0, 30) }}...</p>\r\n        </div>\r\n        <p v-if=\"!ragStore.qaHistory.length\" style=\"font-size: 12px; color: #999;\">暂无问答历史</p>\r\n      </div>\r\n    </div>\r\n  </template>\r\n  \r\n  <script setup>\r\n  import { useRagStore } from '../store/ragStore'\r\n  \r\n  const ragStore = useRagStore()\r\n  \r\n  // 显示历史问答详情（后续完善）\r\n  const showHistory = (item) => {\r\n    alert(`问题：${item.question}\\n回答：${item.answer}`)\r\n  }\r\n  </script>"
+        }
+    ]
+}

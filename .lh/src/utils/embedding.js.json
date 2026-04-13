@@ -1,0 +1,18 @@
+{
+    "sourceFile": "src/utils/embedding.js",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1775727320965,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1775727320965,
+            "name": "Commit-0",
+            "content": "// 引入所需依赖（适配当前项目依赖，无失效问题）\r\nimport { HuggingFaceInferenceEmbeddings } from \"@langchain/community/embeddings/hf\";\r\n\r\n// 初始化Embedding实例（中文友好，无需额外配置，默认维度适配LlamaIndex）\r\nconst embedding = new HuggingFaceInferenceEmbeddings({\r\n  modelName: \"all-MiniLM-L6-v2\", // 轻量高效，适配前端本地运行，中文支持良好\r\n  // 无需API Key，开源免费，直接调用本地逻辑，避免API依赖\r\n});\r\n\r\n// 导出实例，供其他组件调用（向量生成时使用）\r\nexport default embedding;"
+        }
+    ]
+}

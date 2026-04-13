@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/dashscope/:path*",
+      "destination": "/api/dashscope/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

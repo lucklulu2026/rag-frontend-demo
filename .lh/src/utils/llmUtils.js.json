@@ -1,0 +1,18 @@
+{
+    "sourceFile": "src/utils/llmUtils.js",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1775801086360,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1775801086360,
+            "name": "Commit-0",
+            "content": "import { ChatTongyi } from \"@langchain/community/chat_models/anthropic\";\r\nimport { HumanMessage } from \"@langchain/core/messages\";\r\n\r\n// 初始化通义千问大模型实例（核心步骤，关联.env文件中的API Key）\r\nconst tongyiChat = new ChatTongyi({\r\n  apiKey: import.meta.env.VITE_TONGYI_API_KEY, // 读取环境变量中的API Key，避免硬编码\r\n  modelName: \"qwen-turbo\", // 免费版模型，足够满足本项目需求，无需额外付费\r\n  temperature: 0.7, // 回答温度，0-1之间，越低越精准，越高越灵活\r\n  maxTokens: 1000, // 最大回答长度，避免回答过长，适配项目需求\r\n});\r\n\r\n/**\r\n * 大模型调用函数（核心功能）\r\n * @param {string} question - 用户输入的提问内容\r\n * @returns {Promise<string>} - 大模型返回的回答文本\r\n */\r\nconst callTongyiModel = async (question) => {\r\n  try {\r\n    // 校验提问内容，避免空提问调用API（提升代码健壮性）\r\n    if (!question.trim()) {\r\n      alert(\"请输入有效的提问内容！\");\r\n      return \"\";\r\n    }\r\n\r\n    // 调用通义千问API，传入用户提问，获取回答\r\n    const messages = [new HumanMessage(question)];\r\n    const response = await tongyiChat.invoke(messages);\r\n\r\n    // 提取回答文本（处理返回格式，确保只返回纯文本，便于页面显示）\r\n    const answer = response.content || \"抱歉，未能获取到有效的回答，请重新提问。\";\r\n    return answer;\r\n  } catch (error) {\r\n    // 错误处理，精准定位问题，便于排查（适配常见API调用失败场景）\r\n    console.error(\"通义千问API调用失败：\", error);\r\n    if (error.message.includes(\"API key\")) {\r\n      alert(\"API Key配置错误，请检查.env文件中的VITE_TONGYI_API_KEY是否正确！\");\r\n    } else if (error.message.includes(\"network\")) {\r\n      alert(\"网络异常，请检查网络连接后重新尝试！\");\r\n    } else {\r\n      alert(\"大模型调用失败，请稍后再试！\");\r\n    }\r\n    return \"\";\r\n  }\r\n};\r\n\r\n// 导出函数，供QaChat组件调用（后续Day4完善QaChat组件时使用）\r\nexport { callTongyiModel };"
+        }
+    ]
+}

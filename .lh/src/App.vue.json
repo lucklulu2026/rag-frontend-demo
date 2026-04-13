@@ -1,0 +1,26 @@
+{
+    "sourceFile": "src/App.vue",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 2,
+            "patches": [
+                {
+                    "date": 1775724878475,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1775724923665,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,17 +4,20 @@\n import HistoryRecord from './components/HistoryRecord.vue'\n </script>\n \n <template>\n-  <div>\n-    <a href=\"https://vitejs.dev\" target=\"_blank\">\n-      <img src=\"/vite.svg\" class=\"logo\" alt=\"Vite logo\" />\n-    </a>\n-    <a href=\"https://vuejs.org/\" target=\"_blank\">\n-      <img src=\"./assets/vue.svg\" class=\"logo vue\" alt=\"Vue logo\" />\n-    </a>\n+  <div class=\"app-container\">\n+    <!-- 文档上传区 -->\n+    <DocumentUpload />\n+    \n+    <div class=\"middle-container\">\n+      <!-- 问答区 -->\n+      &lt;QaChat /&gt;\n+      \n+      <!-- 历史记录区 -->\n+      <HistoryRecord />\n+    </div>\n   </div>\n-  <HelloWorld msg=\"Vite + Vue\" />\n </template>\n \n <style scoped>\n .logo {\n"
+                },
+                {
+                    "date": 1775724944279,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -0,0 +1,35 @@\n+<script setup>\n+import DocumentUpload from './components/DocumentUpload.vue'\n+import QaChat from './components/QaChat.vue'\n+import HistoryRecord from './components/HistoryRecord.vue'\n+</script>\n+\n+<template>\n+  <div class=\"app-container\">\n+    <!-- 文档上传区 -->\n+    <DocumentUpload />\n+    \n+    <div class=\"middle-container\">\n+      <!-- 问答区 -->\n+      <QaChat />\n+      \n+      <!-- 历史记录区 -->\n+      <HistoryRecord />\n+    </div>\n+  </div>\n+</template>\n+\n+<style scoped>\n+.logo {\n+  height: 6em;\n+  padding: 1.5em;\n+  will-change: filter;\n+  transition: filter 300ms;\n+}\n+.logo:hover {\n+  filter: drop-shadow(0 0 2em #646cffaa);\n+}\n+.logo.vue:hover {\n+  filter: drop-shadow(0 0 2em #42b883aa);\n+}\n+</style>\n"
+                }
+            ],
+            "date": 1775724878475,
+            "name": "Commit-0",
+            "content": "<script setup>\nimport DocumentUpload from './components/DocumentUpload.vue'\nimport QaChat from './components/QaChat.vue'\nimport HistoryRecord from './components/HistoryRecord.vue'\n</script>\n\n<template>\n  <div>\n    <a href=\"https://vitejs.dev\" target=\"_blank\">\n      <img src=\"/vite.svg\" class=\"logo\" alt=\"Vite logo\" />\n    </a>\n    <a href=\"https://vuejs.org/\" target=\"_blank\">\n      <img src=\"./assets/vue.svg\" class=\"logo vue\" alt=\"Vue logo\" />\n    </a>\n  </div>\n  <HelloWorld msg=\"Vite + Vue\" />\n</template>\n\n<style scoped>\n.logo {\n  height: 6em;\n  padding: 1.5em;\n  will-change: filter;\n  transition: filter 300ms;\n}\n.logo:hover {\n  filter: drop-shadow(0 0 2em #646cffaa);\n}\n.logo.vue:hover {\n  filter: drop-shadow(0 0 2em #42b883aa);\n}\n</style>\n"
+        }
+    ]
+}

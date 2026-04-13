@@ -1,0 +1,18 @@
+{
+    "sourceFile": "src/store/ragStore.js",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1775725258615,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1775725258615,
+            "name": "Commit-0",
+            "content": "import { defineStore } from 'pinia'\r\n\r\n// 定义RAG项目核心状态\r\nexport const useRagStore = defineStore('rag', {\r\n  state: () => ({\r\n    // 上传的文档列表（存储文档名称、解析后的文本块）\r\n    documentList: [],\r\n    // 问答历史（存储提问、回答、相关文本块）\r\n    qaHistory: [],\r\n    // 当前提问和回答（临时存储）\r\n    currentQuestion: '',\r\n    currentAnswer: '',\r\n    // 相关文本块（RAG检索后存储）\r\n    relatedTexts: []\r\n  }),\r\n  actions: {\r\n    // 添加文档到列表\r\n    addDocument(doc) {\r\n      this.documentList.push(doc)\r\n    },\r\n    // 添加问答历史\r\n    addQaHistory(question, answer, relatedTexts = []) {\r\n      this.qaHistory.push({\r\n        question,\r\n        answer,\r\n        relatedTexts,\r\n        time: new Date().toLocaleString()\r\n      })\r\n    },\r\n    // 清空问答历史\r\n    clearQaHistory() {\r\n      this.qaHistory = []\r\n    }\r\n  }\r\n})"
+        }
+    ]
+}
