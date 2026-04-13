@@ -1,57 +1,58 @@
-import https from 'https'
+export const config = {
+  runtime: 'edge',
+}
 
-export default function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Target-Path')
-
+export default async function handler(req) {
+  // CORS 预检
   if (req.method === 'OPTIONS') {
-    return res.status(200).end()
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, X-Target-Path',
+      },
+    })
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
+    return Response.json({ error: 'Method not allowed' }, { status: 405 })
   }
 
   const apiKey = process.env.VITE_TONGYI_API_KEY
   if (!apiKey) {
-    return res.status(500).json({ error: 'API Key not configured on server' })
+    return Response.json({ error: 'API Key not configured' }, { status: 500 })
   }
 
-  const targetPath = req.headers['x-target-path']
+  const targetPath = req.headers.get('x-target-path')
   if (!targetPath) {
-    return res.status(400).json({ error: 'Missing X-Target-Path header' })
+    return Response.json({ error: 'Missing X-Target-Path' }, { status: 400 })
   }
 
-  const postData = JSON.stringify(req.body)
+  const targetUrl = `https://dashscope.aliyuncs.com${targetPath}`
 
-  const options = {
-    hostname: 'dashscope.aliyuncs.com',
-    path: targetPath,
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Length': Buffer.byteLength(postData),
-    },
-  }
+  try {
+    const body = await req.json()
 
-  const proxyReq = https.request(options, (proxyRes) => {
-    let data = ''
-    proxyRes.on('data', (chunk) => { data += chunk })
-    proxyRes.on('end', () => {
-      try {
-        res.status(proxyRes.statusCode).json(JSON.parse(data))
-      } catch (e) {
-        res.status(502).json({ error: 'Invalid API response' })
-      }
+    const apiRes = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
     })
-  })
 
-  proxyReq.on('error', (error) => {
-    res.status(500).json({ error: error.message })
-  })
+    const data = await apiRes.json()
 
-  proxyReq.write(postData)
-  proxyReq.end()
+    return Response.json(data, {
+      status: apiRes.status,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+    })
+  } catch (error) {
+    return Response.json(
+      { error: error.message || 'Proxy request failed' },
+      { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } }
+    )
+  }
 }
