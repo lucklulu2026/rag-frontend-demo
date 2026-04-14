@@ -268,11 +268,11 @@ const openPreview = (doc) => {
   text-align: center;
   cursor: pointer;
   transition: all 0.25s;
-  background: #fafbfc;
+  background: var(--drop-bg);
   margin-bottom: 12px;
 
-  &:hover { border-color: var(--primary); background: #f0f5ff; }
-  &.has-file { border-style: solid; border-color: var(--primary); background: #f0f5ff; padding: 14px 16px; }
+  &:hover { border-color: var(--primary); background: var(--active-bg); }
+  &.has-file { border-style: solid; border-color: var(--primary); background: var(--active-bg); padding: 14px 16px; }
   &.is-parsing { opacity: 0.6; pointer-events: none; }
 }
 
@@ -300,7 +300,7 @@ const openPreview = (doc) => {
   &-select-row { display: flex; gap: 6px; }
   &-dropdown {
     flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
-    font-size: 13px; color: var(--text); background: #fff; outline: none; cursor: pointer;
+    font-size: 13px; color: #1d2129; background: #fff; outline: none; cursor: pointer;
     transition: border-color 0.2s;
     &:focus { border-color: var(--primary); }
   }
@@ -308,7 +308,7 @@ const openPreview = (doc) => {
     padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border);
     background: #fff; color: var(--text-secondary); font-size: 12px;
     cursor: pointer; white-space: nowrap; transition: all 0.2s;
-    &:hover, &.active { border-color: var(--primary); color: var(--primary); background: #f0f5ff; }
+    &:hover, &.active { border-color: var(--primary); color: var(--primary); background: var(--active-bg); }
   }
   &-new-row { display: flex; gap: 6px; }
   &-new-input {
@@ -341,15 +341,15 @@ const openPreview = (doc) => {
   &-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
   &.parsing, &.vectorizing {
-    background: #fff7e6; color: #d46b08;
+    background: var(--status-warn-bg); color: var(--status-warn-text);
     .parse-status-dot { background: #fa8c16; animation: pulse 1s infinite; }
   }
   &.done {
-    background: #f6ffed; color: #389e0d;
+    background: var(--status-ok-bg); color: var(--status-ok-text);
     .parse-status-dot { background: #52c41a; }
   }
   &.error {
-    background: #fff1f0; color: #cf1322;
+    background: var(--status-err-bg); color: var(--status-err-text);
     .parse-status-dot { background: #f5222d; }
   }
 }
@@ -385,7 +385,7 @@ const openPreview = (doc) => {
   &-delete {
     border: none; background: none; font-size: 13px; cursor: pointer;
     opacity: 0; transition: opacity 0.2s; padding: 2px 4px; border-radius: 4px;
-    &:hover { opacity: 1 !important; background: #fff1f0; }
+    &:hover { opacity: 1 !important; background: var(--danger-hover-bg); }
   }
   &-list { padding-left: 8px; }
 }
@@ -395,7 +395,7 @@ const openPreview = (doc) => {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 12px; background: var(--bg); border-radius: 8px;
   margin-bottom: 6px; transition: background 0.2s; cursor: pointer;
-  &:hover { background: #eef1f5; }
+  &:hover { background: var(--hover-bg); }
 
   &-info { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
   &-icon { font-size: 18px; flex-shrink: 0; }
@@ -427,5 +427,31 @@ const openPreview = (doc) => {
   &-raw { white-space: pre-wrap; font-size: 14px; line-height: 1.8; color: var(--text); }
   &-chunks { display: flex; flex-direction: column; gap: 8px; }
   &-meta { font-size: 12px; color: var(--text-secondary); }
+}
+
+// ===== 移动端适配 =====
+@media (max-width: 768px) {
+  .upload-container {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: none;
+    width: 85vw;
+    min-width: unset;
+    max-width: 320px;
+
+    &.sidebar-open {
+      transform: translateX(0);
+      box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  .doc-preview-modal {
+    width: 95vw;
+    max-height: 85vh;
+  }
 }
 </style>

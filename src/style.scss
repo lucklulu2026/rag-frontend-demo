@@ -15,6 +15,46 @@
   --border: #e5e6eb;
   --radius: 12px;
   --shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  --code-bg: #f0f2f5;
+  --code-color: #d63384;
+  --pre-bg: #1e1e2e;
+  --pre-color: #cdd6f4;
+  --hover-bg: #eef1f5;
+  --active-bg: #f0f5ff;
+  --drop-bg: #fafbfc;
+  --status-warn-bg: #fff7e6;
+  --status-warn-text: #d46b08;
+  --status-ok-bg: #f6ffed;
+  --status-ok-text: #389e0d;
+  --status-err-bg: #fff1f0;
+  --status-err-text: #cf1322;
+  --danger-hover-bg: #fff1f0;
+}
+
+// 暗色主题
+[data-theme="dark"] {
+  --primary: #6b8aff;
+  --primary-hover: #5a7af5;
+  --bg: #17171a;
+  --card-bg: #1e1e22;
+  --text: #e8e8eb;
+  --text-secondary: #8b8d98;
+  --border: #2e2e35;
+  --shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  --code-bg: #2a2a32;
+  --code-color: #f0a0c0;
+  --pre-bg: #111114;
+  --pre-color: #cdd6f4;
+  --hover-bg: #28282e;
+  --active-bg: #1e2a45;
+  --drop-bg: #1a1a1e;
+  --status-warn-bg: #2a2210;
+  --status-warn-text: #faad14;
+  --status-ok-bg: #1a2a18;
+  --status-ok-text: #52c41a;
+  --status-err-bg: #2a1818;
+  --status-err-text: #ff6b6b;
+  --danger-hover-bg: #2a1818;
 }
 
 body {
@@ -48,6 +88,7 @@ body {
   height: 100vh;
   overflow: hidden;
   position: relative;
+  min-width: 0; // 防止 flex 子项溢出
 }
 
 // ===== 共用按钮 =====
@@ -122,7 +163,7 @@ body {
   justify-content: center;
   transition: all 0.2s;
 
-  &:hover { background: #fee; color: #f53f3f; }
+  &:hover { background: var(--danger-hover-bg); color: #f53f3f; }
 }
 
 .modal-body {
@@ -179,22 +220,22 @@ body {
   li { margin: 4px 0; }
 
   code {
-    background: #f0f2f5;
+    background: var(--code-bg);
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 13px;
     font-family: 'Menlo', 'Monaco', 'Consolas', 'Courier New', monospace;
-    color: #d63384;
+    color: var(--code-color);
   }
 
   pre {
-    background: #1e1e2e;
+    background: var(--pre-bg);
     border-radius: 8px;
     padding: 16px;
     overflow-x: auto;
     margin: 10px 0;
 
-    code { background: none; padding: 0; color: #cdd6f4; font-size: 13px; line-height: 1.5; }
+    code { background: none; padding: 0; color: var(--pre-color); font-size: 13px; line-height: 1.5; }
   }
 
   blockquote {

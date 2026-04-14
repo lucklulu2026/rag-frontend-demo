@@ -1,8 +1,14 @@
 <template>
   <div class="qa-container">
     <div class="qa-top-bar">
-      <h3>💬 智能问答</h3>
+      <div class="qa-top-left">
+        <button class="sidebar-toggle" @click="toggleSidebar">☰</button>
+        <h3>💬 智能问答</h3>
+      </div>
       <div class="qa-top-actions">
+        <button class="theme-toggle-btn" @click="toggleTheme" :title="theme === 'light' ? '切换暗色' : '切换亮色'">
+          {{ theme === 'light' ? '🌙' : '☀️' }}
+        </button>
         <button class="new-chat-btn" @click="handleNewChat" title="新对话 (Ctrl+K)">
           ✨ 新对话
           <span class="shortcut-tag">Ctrl+K</span>
@@ -37,7 +43,8 @@
                   <div class="ref-header">
                     <span class="ref-badge">[{{ ri + 1 }}]</span>
                     <span class="ref-source">{{ r.source }}</span>
-                    <span class="ref-score">{{ (r.score * 100).toFixed(1) }}%</span>
+                    <span class="ref-score">语义 {{ (r.score * 100).toFixed(1) }}%</span>
+                    <span v-if="r.bm25Score > 0" class="ref-score bm25">关键词 {{ r.bm25Score.toFixed(1) }}</span>
                   </div>
                   <div class="ref-text">{{ r.text }}</div>
                 </div>
@@ -111,12 +118,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, nextTick, watch, onMounted, onUnmounted, inject } from 'vue'
 import { useRagStore } from '../store/ragStore'
 import { askWithRAG } from '../utils/llmUtils.js'
 import { renderMarkdown } from '../utils/markdown.js'
+import { theme, toggleTheme } from '../utils/theme.js'
 
 const ragStore = useRagStore()
+
+// 侧边栏控制（从 MainApp 注入）
+const { toggleSidebar } = inject('sidebar', { toggleSidebar: () => {} })
 const question = ref('')
 const loading = ref(false)
 
@@ -294,10 +305,53 @@ const formatTime = (iso) => {
   }
 }
 
+.qa-top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-toggle {
+  display: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 18px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: var(--primary);
+  }
+}
+
 .qa-top-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.theme-toggle-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: var(--primary);
+    background: var(--card-bg);
+  }
 }
 
 .new-chat-btn {
@@ -409,7 +463,7 @@ const formatTime = (iso) => {
   }
 
   &-ai {
-    background: #e8f3ff;
+    background: var(--active-bg);
     color: var(--primary);
   }
 }
@@ -613,6 +667,11 @@ const formatTime = (iso) => {
     color: #00b42a;
     font-size: 11px;
     margin-left: auto;
+
+    &.bm25 {
+      color: #722ed1;
+      margin-left: 6px;
+    }
   }
 
   &-text {
@@ -643,7 +702,7 @@ const formatTime = (iso) => {
   }
 
   &.active {
-    background: #f0f5ff;
+    background: var(--active-bg);
   }
 
   &:hover .session-more-btn {
@@ -712,7 +771,7 @@ const formatTime = (iso) => {
   letter-spacing: 1px;
 
   &:hover {
-    background: #eef1f5;
+    background: var(--hover-bg);
     color: var(--text);
   }
 }
@@ -755,14 +814,14 @@ const formatTime = (iso) => {
     color: #f53f3f;
 
     &:hover {
-      background: #fff1f0;
+      background: var(--danger-hover-bg);
     }
   }
 }
 
 .clear-btn {
   padding: 6px 16px;
-  background: #fff;
+  background: var(--card-bg);
   border: 1px solid #f53f3f;
   color: #f53f3f;
   border-radius: 8px;
@@ -771,7 +830,49 @@ const formatTime = (iso) => {
   transition: all 0.2s;
 
   &:hover {
-    background: #fff1f0;
+    background: var(--danger-hover-bg);
+  }
+}
+
+// ===== 移动端适配 =====
+@media (max-width: 768px) {
+  .sidebar-toggle {
+    display: flex;
+  }
+
+  .qa-top-bar {
+    padding: 12px 16px;
+  }
+
+  .qa-messages {
+    padding: 16px;
+  }
+
+  .qa-input-bar {
+    padding: 12px 16px;
+  }
+
+  .message {
+    max-width: 90%;
+  }
+
+  .shortcut-tag {
+    display: none;
+  }
+
+  .new-chat-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .history-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .history-modal {
+    width: 95vw;
+    max-height: 85vh;
   }
 }
 </style>

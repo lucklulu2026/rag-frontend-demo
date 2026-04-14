@@ -151,21 +151,107 @@ const cosineSimilarity = (a, b) => {
   return denom === 0 ? 0 : dot / denom
 }
 
-// ===== 向量检索：返回最相关的 topK 个文本块 =====
+// ===== BM25 关键词检索 =====
+const tokenize = (text) => {
+  // 中英文分词：中文按字/词切分，英文按空格
+  return text
+    .toLowerCase()
+    .replace(/[^\u4e00-\u9fa5a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 0)
+}
+
+const bm25Search = (query, documents, { k1 = 1.5, b = 0.75 } = {}) => {
+  const queryTokens = tokenize(query)
+  const N = documents.length
+  if (N === 0 || queryTokens.length === 0) return documents.map(() => 0)
+
+  // 计算每个文档的词频和文档长度
+  const docTokens = documents.map(d => tokenize(d.text))
+  const avgDl = docTokens.reduce((sum, t) => sum + t.length, 0) / N
+
+  // 计算 IDF（逆文档频率）
+  const df = {}
+  for (const tokens of docTokens) {
+    const seen = new Set(tokens)
+    for (const t of seen) {
+      df[t] = (df[t] || 0) + 1
+    }
+  }
+
+  // 计算每个文档的 BM25 分数
+  return docTokens.map((tokens, i) => {
+    const dl = tokens.length
+    const tf = {}
+    for (const t of tokens) {
+      tf[t] = (tf[t] || 0) + 1
+    }
+
+    let score = 0
+    for (const qt of queryTokens) {
+      if (!tf[qt]) continue
+      const idf = Math.log((N - (df[qt] || 0) + 0.5) / ((df[qt] || 0) + 0.5) + 1)
+      const tfNorm = (tf[qt] * (k1 + 1)) / (tf[qt] + k1 * (1 - b + b * dl / avgDl))
+      score += idf * tfNorm
+    }
+    return score
+  })
+}
+
+// ===== RRF（Reciprocal Rank Fusion）混合排序 =====
+const reciprocalRankFusion = (rankings, k = 60) => {
+  // rankings: [{id, score}[]] 多个排序列表
+  const scores = {}
+  for (const ranking of rankings) {
+    // 按分数降序排列，获取排名
+    const sorted = [...ranking].sort((a, b) => b.score - a.score)
+    sorted.forEach((item, rank) => {
+      scores[item.id] = (scores[item.id] || 0) + 1 / (k + rank + 1)
+    })
+  }
+  return scores
+}
+
+// ===== 混合检索：向量 + BM25 关键词，RRF 融合排序 =====
+const SIMILARITY_THRESHOLD = 0.35 // 相似度阈值，低于此值的结果过滤掉
+
 const searchSimilar = async (query, topK = 3) => {
   const allVectors = await db.vectors.toArray()
   if (allVectors.length === 0) return []
 
+  // 1. 向量语义检索
   const queryVector = await embedding.embedQuery(query)
-
-  const scored = allVectors.map(item => ({
-    text: item.text,
-    source: item.fileName,
+  const vectorScores = allVectors.map((item, i) => ({
+    id: i,
     score: cosineSimilarity(queryVector, item.vector)
   }))
 
-  scored.sort((a, b) => b.score - a.score)
-  return scored.slice(0, topK)
+  // 2. BM25 关键词检索
+  const bm25Scores = bm25Search(query, allVectors)
+  const keywordScores = allVectors.map((_, i) => ({
+    id: i,
+    score: bm25Scores[i]
+  }))
+
+  // 3. RRF 融合两路检索结果
+  const fusedScores = reciprocalRankFusion([vectorScores, keywordScores])
+
+  // 4. 组合结果，附带向量相似度用于展示和阈值过滤
+  const results = allVectors.map((item, i) => ({
+    text: item.text,
+    source: item.fileName,
+    score: vectorScores[i].score,       // 向量相似度（展示用）
+    bm25Score: bm25Scores[i],           // BM25 分数
+    fusedScore: fusedScores[i] || 0,    // RRF 融合分数（排序用）
+  }))
+
+  // 5. 按融合分数排序
+  results.sort((a, b) => b.fusedScore - a.fusedScore)
+
+  // 6. 过滤低质量结果（向量相似度低于阈值的）
+  const filtered = results.filter(r => r.score >= SIMILARITY_THRESHOLD)
+
+  return filtered.slice(0, topK)
 }
 
 // ===== 获取知识库统计 =====
