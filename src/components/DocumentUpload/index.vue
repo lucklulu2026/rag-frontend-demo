@@ -122,9 +122,9 @@
 
 <script setup>
 import { ref, reactive, computed } from 'vue'
-import { useRagStore } from '../store/ragStore'
-import { storeVectors, removeDocVectors, smartChunkText } from '../utils/vectorUtils.js'
-import { parseDocument } from '../utils/docParser.js'
+import { useRagStore } from '../../store/ragStore.js'
+import { storeVectors, removeDocVectors, smartChunkText } from '../../utils/services/vector.js'
+import { parseDocument } from '../../utils/services/docParser.js'
 import {
   Library, Upload, FileText, FileType, X, Plus, Tag, Zap,
   ChevronRight, Trash2, FolderOpen, Inbox,
@@ -412,14 +412,14 @@ const openPreview = (doc) => {
 // 文档项
 .kb-item {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px; background: var(--bg); border-radius: 8px;
+  padding: 10px 12px; background: var(--kb-bg); border-radius: 8px;
   margin-bottom: 6px; transition: background 0.2s; cursor: pointer;
   &:hover { background: var(--hover-bg); }
 
   &-info { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
   &-icon { font-size: 18px; flex-shrink: 0; }
   &-meta { display: flex; flex-direction: column; min-width: 0; }
-  &-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  &-name { font-size: 13px; font-weight: 500; color: var(--text-kb); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   &-detail { font-size: 11px; color: var(--text-secondary); }
 }
 

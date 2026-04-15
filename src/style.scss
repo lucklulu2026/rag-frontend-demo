@@ -10,7 +10,9 @@
   --primary-hover: #3b5de7;
   --bg: #f7f8fa;
   --card-bg: #ffffff;
+  --kb-bg: #f7f8fa;
   --text: #1d2129;
+  --text-kb: #1d2129;
   --text-secondary: #86909c;
   --border: #e5e6eb;
   --radius: 12px;
@@ -39,8 +41,10 @@
   --primary-hover: #5a7af5;
   --bg: #17171a;
   --card-bg: #1e1e22;
+  --kb-bg: #4b4b4b;
   --text: #e8e8eb;
-  --text-secondary: #8b8d98;
+  --text-kb: #a5d9ff;
+  --text-secondary: #fff;
   --border: #2e2e35;
   --shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   --code-bg: #2a2a32;
@@ -258,6 +262,42 @@ body {
   a { color: var(--primary); text-decoration: none; &:hover { text-decoration: underline; } }
   hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
   strong { font-weight: 600; }
+}
+
+// ===== 全局滚动条 =====
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.2);
+  }
+}
+
+[data-theme="dark"] {
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+  }
 }
 
 // ===== 动画 =====

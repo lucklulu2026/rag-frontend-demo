@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import db from '../utils/db.js'
+import db from '../utils/tools/db.js'
 
 const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 // Dexie 无法存储 Vue 的 Proxy 对象，需要深拷贝成纯对象

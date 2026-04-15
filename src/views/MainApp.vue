@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, provide } from 'vue'
-import DocumentUpload from '../components/DocumentUpload.vue'
-import QaChat from '../components/QaChat.vue'
+import DocumentUpload from '../components/DocumentUpload/index.vue'
+import QaChat from '../components/QaChat/index.vue'
 import { useRagStore } from '../store/ragStore'
 
 const ragStore = useRagStore()
