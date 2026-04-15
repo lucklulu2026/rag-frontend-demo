@@ -2,100 +2,133 @@
   <div class="qa-container">
     <div class="qa-top-bar">
       <div class="qa-top-left">
-        <button class="sidebar-toggle" @click="toggleSidebar">☰</button>
-        <h3>💬 智能问答</h3>
+        <button class="sidebar-toggle" @click="toggleSidebar">
+          <Menu :size="18" />
+        </button>
+        <h3>
+          <MessageSquare :size="18" class="icon-inline" /> 智能问答
+        </h3>
       </div>
       <div class="qa-top-actions">
         <button class="theme-toggle-btn" @click="toggleTheme" :title="theme === 'light' ? '切换暗色' : '切换亮色'">
-          {{ theme === 'light' ? '🌙' : '☀️' }}
+          <Moon v-if="theme === 'light'" :size="16" />
+          <Sun v-else :size="16" />
         </button>
         <button class="new-chat-btn" @click="handleNewChat" title="新对话 (Ctrl+K)">
-          ✨ 新对话
+          <Sparkles :size="14" /> 新对话
           <span class="shortcut-tag">Ctrl+K</span>
         </button>
-        <button class="history-btn" @click="showHistory = true">🕐 历史对话</button>
+        <button class="history-btn" @click="showHistory = true">
+          <Clock :size="14" /> 历史对话
+        </button>
       </div>
     </div>
 
-    <!-- 消息区 -->
-    <div class="qa-messages" ref="messagesRef">
-      <div v-if="!ragStore.currentChat.length && !pendingQuestion && !loading" class="qa-empty">
-        <span class="qa-empty-icon">💡</span>
-        <span>上传文档后，在这里提问吧</span>
-      </div>
-
-      <div class="message-group" v-for="(item, index) in ragStore.currentChat" :key="index">
-        <div class="message message-user">
-          <div class="avatar avatar-user">我</div>
-          <div class="bubble bubble-user">{{ item.question }}</div>
+    <!-- 空状态：居中欢迎页 -->
+    <div v-if="!hasChat && !pendingQuestion && !loading" class="qa-welcome">
+      <div class="welcome-content">
+        <div class="welcome-logo">
+          <span class="logo-text">Rag</span>
         </div>
-        <div class="message message-ai">
-          <div class="avatar avatar-ai">AI</div>
-          <div class="bubble bubble-ai">
-            <div class="answer-text markdown-body" v-html="renderMarkdown(item.answer)"></div>
-            <div v-if="item.relatedTexts && item.relatedTexts.length" class="references">
-              <div class="ref-toggle" @click="toggleRef(index)">
-                📎 参考来源（{{ item.relatedTexts.length }}）
-                <span class="ref-arrow" :class="{ expanded: expandedRefs[index] }">▼</span>
-              </div>
-              <div v-if="expandedRefs[index]" class="ref-list">
-                <div class="ref-item" v-for="(r, ri) in item.relatedTexts" :key="ri">
-                  <div class="ref-header">
-                    <span class="ref-badge">[{{ ri + 1 }}]</span>
-                    <span class="ref-source">{{ r.source }}</span>
-                    <span class="ref-score">语义 {{ (r.score * 100).toFixed(1) }}%</span>
-                    <span v-if="r.bm25Score > 0" class="ref-score bm25">关键词 {{ r.bm25Score.toFixed(1) }}</span>
+        <div class="welcome-input-box">
+          <textarea v-model="question" class="welcome-textarea" placeholder="有什么问题尽管问..." rows="3"
+            @keydown.enter.exact.prevent="handleAsk" :disabled="loading"></textarea>
+          <div class="welcome-input-footer">
+            <div class="welcome-hints-inline">
+              <span class="welcome-hint" @click="question = '这个知识库里有什么内容？'">
+                <BookOpen :size="13" /> 知识库内容
+              </span>
+              <span class="welcome-hint" @click="question = '帮我总结一下文档的要点'">
+                <FileText :size="13" /> 总结要点
+              </span>
+              <span class="welcome-hint" @click="question = '这个项目的技术栈是什么？'"><Code :size="13" /> 技术栈</span>
+            </div>
+            <button class="send-btn welcome-send" @click="handleAsk" :disabled="loading || !question.trim()">
+              <SendHorizonal :size="16" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 有对话：正常聊天布局 -->
+    <template v-else>
+      <div class="qa-messages" ref="messagesRef">
+        <div class="message-group" v-for="(item, index) in ragStore.currentChat" :key="index">
+          <div class="message message-user">
+            <div class="bubble bubble-user">{{ item.question }}</div>
+          </div>
+          <div class="message message-ai">
+            <div class="bubble bubble-ai">
+              <div class="answer-text markdown-body" v-html="renderMarkdown(item.answer)"></div>
+              <div v-if="item.relatedTexts && item.relatedTexts.length" class="references">
+                <div class="ref-toggle" @click="toggleRef(index)">
+                  <Paperclip :size="12" /> 参考来源（{{ item.relatedTexts.length }}）
+                  <span class="ref-arrow" :class="{ expanded: expandedRefs[index] }">
+                    <ChevronDown :size="12" />
+                  </span>
+                </div>
+                <div v-if="expandedRefs[index]" class="ref-list">
+                  <div class="ref-item" v-for="(r, ri) in item.relatedTexts" :key="ri">
+                    <div class="ref-header">
+                      <span class="ref-badge">[{{ ri + 1 }}]</span>
+                      <span class="ref-source">{{ r.source }}</span>
+                      <span class="ref-score">语义 {{ (r.score * 100).toFixed(1) }}%</span>
+                      <span v-if="r.bm25Score > 0" class="ref-score bm25">关键词 {{ r.bm25Score.toFixed(1) }}</span>
+                    </div>
+                    <div class="ref-text">{{ r.text }}</div>
                   </div>
-                  <div class="ref-text">{{ r.text }}</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <div v-if="pendingQuestion" class="message-group">
-        <div class="message message-user">
-          <div class="avatar avatar-user">我</div>
-          <div class="bubble bubble-user">{{ pendingQuestion }}</div>
+        <div v-if="pendingQuestion" class="message-group">
+          <div class="message message-user">
+            <div class="bubble bubble-user">{{ pendingQuestion }}</div>
+          </div>
+        </div>
+        <div v-if="loading" class="loading-dots">
+          <div class="dots"><span></span><span></span><span></span></div>
         </div>
       </div>
-
-      <div v-if="loading" class="loading-dots">
-        <div class="avatar avatar-ai">AI</div>
-        <div class="dots"><span></span><span></span><span></span></div>
+      <div class="qa-input-bar">
+        <div class="qa-input-wrapper">
+          <input v-model="question" placeholder="输入你的问题..." @keyup.enter="handleAsk" :disabled="loading" />
+          <button class="send-btn" @click="handleAsk" :disabled="loading || !question.trim()">
+            <SendHorizonal :size="16" />
+          </button>
+        </div>
       </div>
-    </div>
-
-    <!-- 输入区 -->
-    <div class="qa-input-bar">
-      <div class="qa-input-wrapper">
-        <input v-model="question" placeholder="输入你的问题..." @keyup.enter="handleAsk" :disabled="loading" />
-        <button class="send-btn" @click="handleAsk" :disabled="loading || !question.trim()">➤</button>
-      </div>
-    </div>
+    </template>
 
     <!-- 历史对话弹窗 -->
     <div v-if="showHistory" class="modal-overlay" @click.self="closeHistory">
       <div class="modal history-modal">
         <div class="modal-header">
-          <h3>🕐 历史对话</h3>
-          <button class="modal-close" @click="closeHistory">✕</button>
+          <h3>
+            <Clock :size="16" /> 历史对话
+          </h3>
+          <button class="modal-close" @click="closeHistory">
+            <X :size="18" />
+          </button>
         </div>
         <div class="modal-body">
           <div v-if="!sessionsWithMessages.length" class="modal-empty">暂无历史对话</div>
           <div class="session-item" v-for="s in sessionsWithMessages" :key="s.id"
             :class="{ active: s.id === ragStore.currentSessionId }" @click="handleSwitchSession(s.id)">
-            <div class="session-icon">💬</div>
+            <div class="session-icon">
+              <MessageSquare :size="16" />
+            </div>
             <div class="session-info">
               <input v-if="renamingId === s.id" v-model="renameValue" class="session-rename-input"
                 @keyup.enter="confirmRename(s.id)" @blur="confirmRename(s.id)" @click.stop />
               <span v-else class="session-title">{{ s.title }}</span>
-              <!-- <span class="session-meta">{{ s.messages.length }} 条对话 · {{ formatTime(s.createdAt) }}</span> -->
             </div>
-            <!-- 三点菜单 -->
             <div class="session-more" @click.stop>
-              <button class="session-more-btn" ref="moreBtnRefs" @click="toggleMenu($event, s.id)">⋯</button>
+              <button class="session-more-btn" @click="toggleMenu($event, s.id)">
+                <MoreHorizontal :size="16" />
+              </button>
             </div>
           </div>
         </div>
@@ -105,12 +138,15 @@
       </div>
     </div>
 
-    <!-- 浮动菜单（teleport 到 body，避免被 overflow 裁剪） -->
     <Teleport to="body">
       <div v-if="menuOpenId && showHistory" class="session-menu-overlay" @click="menuOpenId = null">
         <div class="session-menu" :style="menuStyle" @click.stop>
-          <div class="session-menu-item" @click="startRenameFromMenu">重命名</div>
-          <div class="session-menu-item delete" @click="handleDeleteSession(menuOpenId)">删除</div>
+          <div class="session-menu-item" @click="startRenameFromMenu">
+            <Pen :size="14" /> 重命名
+          </div>
+          <div class="session-menu-item delete" @click="handleDeleteSession(menuOpenId)">
+            <Trash2 :size="14" /> 删除
+          </div>
         </div>
       </div>
     </Teleport>
@@ -123,16 +159,18 @@ import { useRagStore } from '../store/ragStore'
 import { askWithRAG } from '../utils/llmUtils.js'
 import { renderMarkdown } from '../utils/markdown.js'
 import { theme, toggleTheme } from '../utils/theme.js'
+import {
+  Menu, MessageSquare, Moon, Sun, Sparkles, Clock,
+  BookOpen, FileText, Code, SendHorizonal, Paperclip,
+  ChevronDown, MoreHorizontal, X, Pen, Trash2
+} from 'lucide-vue-next'
 
 const ragStore = useRagStore()
-
-// 侧边栏控制（从 MainApp 注入）
-const { toggleSidebar } = inject('sidebar', { toggleSidebar: () => {} })
+const { toggleSidebar } = inject('sidebar', { toggleSidebar: () => { } })
 const question = ref('')
 const loading = ref(false)
-
-// 只显示有消息的会话
 const sessionsWithMessages = computed(() => ragStore.sessions.filter(s => s.messages.length > 0))
+const hasChat = computed(() => ragStore.currentChat.length > 0 || pendingQuestion.value || loading.value)
 const showHistory = ref(false)
 const messagesRef = ref(null)
 const pendingQuestion = ref('')
@@ -152,23 +190,15 @@ const handleNewChat = async () => {
 }
 
 const handleKeydown = (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-    e.preventDefault()
-    handleNewChat()
-  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); handleNewChat() }
 }
-
 onMounted(() => window.addEventListener('keydown', handleKeydown))
 onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 
 const toggleRef = (index) => { expandedRefs[index] = !expandedRefs[index] }
-
 const scrollToBottom = () => {
-  nextTick(() => {
-    if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight
-  })
+  nextTick(() => { if (messagesRef.value) messagesRef.value.scrollTop = messagesRef.value.scrollHeight })
 }
-
 watch(() => ragStore.currentChat.length, scrollToBottom)
 
 const handleAsk = async () => {
@@ -178,12 +208,9 @@ const handleAsk = async () => {
   question.value = ''
   pendingQuestion.value = q
   scrollToBottom()
-
   try {
     const { answer, references } = await askWithRAG(q, ragStore.currentChat)
-    if (answer) {
-      await ragStore.addMessage(q, answer, references)
-    }
+    if (answer) await ragStore.addMessage(q, answer, references)
   } catch (error) {
     console.error('问答交互失败：', error)
     alert('问答失败，请稍后再试！')
@@ -201,84 +228,27 @@ const handleSwitchSession = (id) => {
   showHistory.value = false
   scrollToBottom()
 }
-
-const closeHistory = () => {
-  showHistory.value = false
-  menuOpenId.value = null
-  renamingId.value = null
-}
-
+const closeHistory = () => { showHistory.value = false; menuOpenId.value = null; renamingId.value = null }
 const toggleMenu = (event, id) => {
-  if (menuOpenId.value === id) {
-    menuOpenId.value = null
-    return
-  }
-  // 计算按钮位置，让菜单浮动在按钮下方
-  const btn = event.currentTarget
-  const rect = btn.getBoundingClientRect()
-  menuStyle.value = {
-    position: 'fixed',
-    top: rect.bottom + 4 + 'px',
-    left: (rect.right - 140) + 'px',
-  }
+  if (menuOpenId.value === id) { menuOpenId.value = null; return }
+  const rect = event.currentTarget.getBoundingClientRect()
+  menuStyle.value = { position: 'fixed', top: rect.bottom + 4 + 'px', left: (rect.right - 140) + 'px' }
   menuOpenId.value = id
 }
-
 const startRenameFromMenu = () => {
   const session = ragStore.sessions.find(s => s.id === menuOpenId.value)
-  if (session) {
-    renamingId.value = session.id
-    renameValue.value = session.title
-  }
+  if (session) { renamingId.value = session.id; renameValue.value = session.title }
   menuOpenId.value = null
-  nextTick(() => {
-    const inputs = document.querySelectorAll('.session-rename-input')
-    if (inputs.length) inputs[inputs.length - 1].focus()
-  })
+  nextTick(() => { const inputs = document.querySelectorAll('.session-rename-input'); if (inputs.length) inputs[inputs.length - 1].focus() })
 }
-
-const startRename = (session) => {
-  renamingId.value = session.id
-  renameValue.value = session.title
-  menuOpenId.value = null
-  nextTick(() => {
-    const inputs = document.querySelectorAll('.session-rename-input')
-    if (inputs.length) inputs[inputs.length - 1].focus()
-  })
-}
-
 const confirmRename = async (id) => {
-  if (renameValue.value.trim()) {
-    await ragStore.renameSession(id, renameValue.value.trim())
-  }
+  if (renameValue.value.trim()) await ragStore.renameSession(id, renameValue.value.trim())
   renamingId.value = null
-  // 短暂标记，防止 blur 后紧接的 click 触发切换
   justFinishedRename.value = true
   setTimeout(() => { justFinishedRename.value = false }, 200)
 }
-
-const handleDeleteSession = async (id) => {
-  menuOpenId.value = null
-  await ragStore.deleteSession(id)
-}
-
-const handleClearAll = async () => {
-  menuOpenId.value = null
-  await ragStore.clearAllSessions()
-  showHistory.value = false
-}
-
-const formatTime = (iso) => {
-  if (!iso) return ''
-  const d = new Date(iso)
-  const now = new Date()
-  const diff = now - d
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前'
-  if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前'
-  if (diff < 604800000) return Math.floor(diff / 86400000) + ' 天前'
-  return d.toLocaleDateString()
-}
+const handleDeleteSession = async (id) => { menuOpenId.value = null; await ragStore.deleteSession(id) }
+const handleClearAll = async () => { menuOpenId.value = null; await ragStore.clearAllSessions(); showHistory.value = false }
 </script>
 
 <style lang="scss" scoped>
@@ -302,6 +272,9 @@ const formatTime = (iso) => {
     font-size: 16px;
     font-weight: 600;
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 }
 
@@ -318,6 +291,7 @@ const formatTime = (iso) => {
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--bg);
+  color: var(--text);
   font-size: 18px;
   cursor: pointer;
   align-items: center;
@@ -341,6 +315,7 @@ const formatTime = (iso) => {
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--bg);
+  color: var(--text);
   font-size: 16px;
   cursor: pointer;
   display: flex;
@@ -357,7 +332,7 @@ const formatTime = (iso) => {
 .new-chat-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 6px 14px;
   background: var(--primary);
   border: none;
@@ -375,7 +350,7 @@ const formatTime = (iso) => {
 .shortcut-tag {
   font-size: 10px;
   background: rgba(255, 255, 255, 0.2);
-  padding: 1px 5px;
+  padding: 2px 5px;
   border-radius: 4px;
   margin-left: 2px;
 }
@@ -383,7 +358,7 @@ const formatTime = (iso) => {
 .history-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 6px 14px;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -399,6 +374,113 @@ const formatTime = (iso) => {
   }
 }
 
+// 欢迎页
+.qa-welcome {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+  padding-top: 12vh;
+}
+
+.welcome-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 920px;
+  width: 100%;
+}
+
+.welcome-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+
+  .logo-text {
+    font-size: 64px;
+    font-weight: 400;
+    color: var(--text);
+    font-family: 'Righteous', cursive;
+  }
+}
+
+.welcome-input-box {
+  width: 100%;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 4px 20px rgba(79, 110, 247, 0.08);
+  }
+}
+
+.welcome-textarea {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  color: var(--text);
+  outline: none;
+  resize: none;
+  line-height: 1.6;
+  font-family: inherit;
+
+  &::placeholder {
+    color: var(--text-secondary);
+  }
+}
+
+.welcome-input-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.welcome-hints-inline {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.welcome-hint {
+  padding: 5px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  &:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--active-bg);
+  }
+}
+
+.welcome-send {
+  width: 38px;
+  height: 38px;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
 // 消息区
 .qa-messages {
   flex: 1;
@@ -409,31 +491,15 @@ const formatTime = (iso) => {
   gap: 20px;
 }
 
-.qa-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-secondary);
-  font-size: 14px;
-  gap: 8px;
-
-  &-icon {
-    font-size: 48px;
-    opacity: 0.4;
-  }
-}
-
 .message {
   display: flex;
-  gap: 12px;
-  max-width: 80%;
+  gap: 14px;
+  max-width: 75%;
 
   &-group {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
   }
 
   &-user {
@@ -446,63 +512,41 @@ const formatTime = (iso) => {
   }
 }
 
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 600;
-  flex-shrink: 0;
-
-  &-user {
-    background: var(--primary);
-    color: #fff;
-  }
-
-  &-ai {
-    background: var(--active-bg);
-    color: var(--primary);
-  }
-}
-
 .bubble {
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: 16px;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.7;
   word-break: break-word;
 
   &-user {
-    background: var(--primary);
-    color: #fff;
+    background: var(--user-bubble);
+    color: var(--user-bubble-text);
     border-top-right-radius: 4px;
   }
 
   &-ai {
     background: var(--card-bg);
     color: var(--text);
-    border: 1px solid var(--border);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
     border-top-left-radius: 4px;
   }
 }
 
 .loading-dots {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 14px;
   padding: 0 24px;
 }
 
 .dots {
   display: flex;
-  gap: 4px;
-  padding: 12px 16px;
+  gap: 5px;
+  padding: 14px 18px;
   background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
   border-top-left-radius: 4px;
 
   span {
@@ -714,6 +758,7 @@ const formatTime = (iso) => {
   font-size: 14px;
   flex-shrink: 0;
   opacity: 0.5;
+  color: var(--text-secondary);
 }
 
 .session-info {
@@ -742,14 +787,9 @@ const formatTime = (iso) => {
   padding: 3px 8px;
   outline: none;
   width: 100%;
+  background: var(--card-bg);
 }
 
-.session-meta {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-// 三点菜单
 .session-more {
   flex-shrink: 0;
 }
@@ -768,7 +808,6 @@ const formatTime = (iso) => {
   justify-content: center;
   transition: all 0.15s;
   opacity: 0;
-  letter-spacing: 1px;
 
   &:hover {
     background: var(--hover-bg);
@@ -776,7 +815,6 @@ const formatTime = (iso) => {
   }
 }
 
-// 浮动菜单（teleport 到 body）
 .session-menu-overlay {
   position: fixed;
   inset: 0;
@@ -834,7 +872,7 @@ const formatTime = (iso) => {
   }
 }
 
-// ===== 移动端适配 =====
+// 移动端
 @media (max-width: 768px) {
   .sidebar-toggle {
     display: flex;
@@ -873,6 +911,24 @@ const formatTime = (iso) => {
   .history-modal {
     width: 95vw;
     max-height: 85vh;
+  }
+
+  .welcome-content {
+    padding: 0 8px;
+  }
+
+  .welcome-logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+
+    .logo-text {
+      font-size: 26px;
+    }
+  }
+
+  .welcome-hints-inline {
+    display: none;
   }
 }
 </style>

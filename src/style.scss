@@ -29,6 +29,8 @@
   --status-err-bg: #fff1f0;
   --status-err-text: #cf1322;
   --danger-hover-bg: #fff1f0;
+  --user-bubble: #242424;
+  --user-bubble-text: #ffffff;
 }
 
 // 暗色主题
@@ -45,9 +47,9 @@
   --code-color: #f0a0c0;
   --pre-bg: #111114;
   --pre-color: #cdd6f4;
-  --hover-bg: #28282e;
-  --active-bg: #1e2a45;
-  --drop-bg: #1a1a1e;
+  --hover-bg: #2c2c33;
+  --active-bg: #252a3a;
+  --drop-bg: #222228;
   --status-warn-bg: #2a2210;
   --status-warn-text: #faad14;
   --status-ok-bg: #1a2a18;
@@ -55,6 +57,8 @@
   --status-err-bg: #2a1818;
   --status-err-text: #ff6b6b;
   --danger-hover-bg: #2a1818;
+  --user-bubble: #ffffff;
+  --user-bubble-text: #1a1a1a;
 }
 
 body {
@@ -259,3 +263,17 @@ body {
 // ===== 动画 =====
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+// ===== 图标工具类 =====
+button, .btn, .history-btn, .new-chat-btn, .welcome-hint,
+.session-menu-item, .preview-tab, .preview-meta, .ref-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
