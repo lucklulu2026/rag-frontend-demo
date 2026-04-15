@@ -125,6 +125,7 @@ import { ref, reactive, computed } from 'vue'
 import { useRagStore } from '../../store/ragStore.js'
 import { storeVectors, removeDocVectors, smartChunkText } from '../../utils/services/vector.js'
 import { parseDocument } from '../../utils/services/docParser.js'
+import { toast } from '../../utils/tools/toast.js'
 import {
   Library, Upload, FileText, FileType, X, Plus, Tag, Zap,
   ChevronRight, Trash2, FolderOpen, Inbox,
@@ -179,7 +180,7 @@ const handleDrop = (e) => {
       parseStatus.value = ''
       parseStatusMsg.value = ''
     } else {
-      alert('不支持的文件格式，请上传 TXT/MD/PDF/DOCX 文件')
+      toast.error('不支持的文件格式，请上传 TXT/MD/PDF/DOCX 文件')
     }
   }
 }
@@ -218,10 +219,12 @@ const handleParseFile = async () => {
     await storeVectors(fileName.value, chunks)
     parseStatus.value = 'done'
     parseStatusMsg.value = `入库成功！${chunks.length} 个文本块`
+    toast.success(`文档入库成功，共 ${chunks.length} 个文本块`)
   } catch (err) {
     console.error('文档解析失败：', err)
     parseStatus.value = 'error'
     parseStatusMsg.value = `失败：${err.message}`
+    toast.error(`文档处理失败：${err.message}`)
   } finally {
     parsing.value = false
   }

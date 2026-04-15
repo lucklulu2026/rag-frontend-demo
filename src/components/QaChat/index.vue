@@ -31,6 +31,7 @@
 import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import { useRagStore } from '../../store/ragStore.js'
 import { askWithRAG } from '../../utils/services/llm.js'
+import { toast } from '../../utils/tools/toast.js'
 
 // 子组件
 import ChatTopBar from './ChatTopBar.vue'
@@ -74,7 +75,7 @@ const handleAsk = async () => {
     if (answer) await ragStore.addMessage(q, answer, references)
   } catch (error) {
     console.error('问答交互失败：', error)
-    alert('问答失败，请稍后再试！')
+    toast.error('问答失败，请检查网络连接后重试')
   } finally {
     pendingQuestion.value = ''
     loading.value = false
