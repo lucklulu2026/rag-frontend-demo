@@ -11,7 +11,7 @@
     <div class="welcome-content">
       <!-- Logo -->
       <div class="welcome-logo">
-        <span class="logo-text">Rag</span>
+        <span class="logo-text">RagClaw</span>
       </div>
       <!-- 输入卡片 -->
       <div class="welcome-input-box">

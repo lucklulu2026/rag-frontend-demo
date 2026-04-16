@@ -29,8 +29,12 @@
               <div class="ref-item" v-for="(r, ri) in item.relatedTexts" :key="ri">
                 <div class="ref-header">
                   <span class="ref-badge">[{{ ri + 1 }}]</span>
-                  <span class="ref-source">{{ r.source }}</span>
-                  <span class="ref-score">语义 {{ (r.score * 100).toFixed(1) }}%</span>
+                  <span class="ref-source-link" @click.stop="openSourceDoc(r)" title="点击查看来源文档">
+                    <FileText :size="12" /> {{ r.source }}
+                  </span>
+                  <span class="ref-score" :class="scoreLevel(r.score)">
+                    {{ (r.score * 100).toFixed(1) }}%
+                  </span>
                   <span v-if="r.bm25Score > 0" class="ref-score bm25">关键词 {{ r.bm25Score.toFixed(1) }}</span>
                 </div>
                 <div class="ref-text">{{ r.text }}</div>
@@ -52,13 +56,27 @@
     <div v-if="loading" class="loading-dots">
       <div class="dots"><span></span><span></span><span></span></div>
     </div>
+
+    <!-- 来源文档预览弹窗 -->
+    <div v-if="previewDoc" class="modal-overlay" @click.self="previewDoc = null">
+      <div class="modal source-preview-modal">
+        <div class="modal-header">
+          <h3><FileText :size="16" /> {{ previewDoc.fileName }}</h3>
+          <button class="modal-close" @click="previewDoc = null"><X :size="18" /></button>
+        </div>
+        <div class="modal-body">
+          <div class="source-preview-content" v-html="highlightedRawText"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, nextTick, watch } from 'vue'
-import { Paperclip, ChevronDown } from 'lucide-vue-next'
+import { ref, reactive, computed, nextTick, watch } from 'vue'
+import { Paperclip, ChevronDown, FileText, X } from 'lucide-vue-next'
 import { renderMarkdown } from '../../utils/tools/markdown.js'
+import { useRagStore } from '../../store/ragStore.js'
 
 const props = defineProps({
   /** @type {Array<{question: string, answer: string, relatedTexts?: Array}>} */
@@ -90,11 +108,76 @@ watch(() => props.pendingQuestion, scrollToBottom)
 /** 重置引用展开状态（切换会话时调用） */
 const resetRefs = () => { Object.keys(expandedRefs).forEach(k => delete expandedRefs[k]) }
 
+// ===== 语义分数颜色分级 =====
+/**
+ * 根据相似度分数返回颜色等级 class
+ * @param {number} score - 0~1 的相似度
+ * @returns {'high'|'medium'|'low'} CSS class 名
+ */
+const scoreLevel = (score) => {
+  const pct = score * 100
+  if (pct >= 70) return 'high'
+  if (pct >= 40) return 'medium'
+  return 'low'
+}
+
+// ===== 来源文档预览 =====
+const ragStore = useRagStore()
+/** @type {import('vue').Ref<Object|null>} 当前预览的文档 */
+const previewDoc = ref(null)
+/** @type {import('vue').Ref<string>} 需要高亮的文本片段 */
+const highlightText = ref('')
+
+/** 高亮后的原文 HTML */
+const highlightedRawText = computed(() => {
+  if (!previewDoc.value) return ''
+  const raw = previewDoc.value.rawText || '原文不可用'
+  if (!highlightText.value) return escapeHtml(raw).replace(/\n/g, '<br>')
+
+  // 在原文中查找并高亮匹配的文本片段
+  const escaped = escapeHtml(raw)
+  const target = escapeHtml(highlightText.value.trim().slice(0, 80)) // 取前80字匹配
+  if (!target) return escaped.replace(/\n/g, '<br>')
+
+  const idx = escaped.indexOf(target)
+  if (idx === -1) return escaped.replace(/\n/g, '<br>')
+
+  const before = escaped.slice(0, idx)
+  const match = escaped.slice(idx, idx + target.length)
+  const after = escaped.slice(idx + target.length)
+  return (before + `<mark class="highlight-mark">${match}</mark>` + after).replace(/\n/g, '<br>')
+})
+
+/** HTML 转义 */
+const escapeHtml = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+/**
+ * 打开来源文档预览，定位并高亮引用的文本
+ * @param {{source: string, text: string}} ref - 引用信息
+ */
+const openSourceDoc = (refItem) => {
+  const doc = ragStore.documentList.find(d => d.fileName === refItem.source)
+  if (!doc) {
+    alert('文档不存在，可能已被删除')
+    return
+  }
+  previewDoc.value = doc
+  highlightText.value = refItem.text
+
+  // 等弹窗渲染后滚动到高亮位置
+  nextTick(() => {
+    setTimeout(() => {
+      const mark = document.querySelector('.highlight-mark')
+      if (mark) mark.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
+  })
+}
+
 defineExpose({ scrollToBottom, resetRefs })
 </script>
 
 <style lang="scss" scoped>
-.qa-messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.qa-messages { width: 950px; margin: 0 auto; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
 .message {
   display: flex; gap: 14px; max-width: 75%;
   &-group { display: flex; flex-direction: column; gap: 16px; }
@@ -122,11 +205,34 @@ defineExpose({ scrollToBottom, resetRefs })
   &-arrow { font-size: 10px; transition: transform 0.2s; &.expanded { transform: rotate(180deg); } }
   &-list { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
   &-item { padding: 8px 10px; background: var(--bg); border-radius: 6px; font-size: 12px; border-left: 3px solid var(--primary); }
-  &-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  &-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
   &-badge { color: var(--primary); font-weight: 600; }
-  &-source { color: var(--text-secondary); font-size: 11px; }
-  &-score { color: #00b42a; font-size: 11px; margin-left: auto; &.bm25 { color: #722ed1; margin-left: 6px; } }
+  &-source-link {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 12px; color: var(--primary); cursor: pointer; transition: all 0.15s;
+    text-decoration: underline; text-decoration-style: dashed; text-underline-offset: 2px;
+    &:hover { color: var(--primary-hover); text-decoration-style: solid; }
+  }
+  &-score {
+    font-size: 11px; margin-left: auto; font-weight: 600; padding: 1px 6px; border-radius: 8px;
+    &.high { color: #389e0d; background: rgba(56, 158, 13, 0.1); }
+    &.medium { color: #d48806; background: rgba(212, 136, 6, 0.1); }
+    &.low { color: #cf1322; background: rgba(207, 19, 34, 0.1); }
+    &.bm25 { color: #722ed1; background: rgba(114, 46, 209, 0.1); margin-left: 4px; }
+  }
   &-text { color: var(--text); line-height: 1.5; }
 }
-@media (max-width: 768px) { .qa-messages { padding: 16px; } .message { max-width: 90%; } }
+
+// 来源文档预览弹窗
+.source-preview-modal { width: 720px; max-height: 80vh; }
+.source-preview-content {
+  font-size: 14px; line-height: 1.8; color: var(--text); white-space: pre-wrap;
+}
+:deep(.highlight-mark) {
+  background: rgba(79, 110, 247, 0.15);
+  padding: 2px 0;
+  border-radius: 2px;
+}
+
+@media (max-width: 768px) { .qa-messages { padding: 16px; } .message { max-width: 90%; } .source-preview-modal { width: 95vw; } }
 </style>

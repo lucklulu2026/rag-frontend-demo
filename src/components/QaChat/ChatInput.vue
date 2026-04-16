@@ -44,7 +44,7 @@ defineEmits(['update:modelValue', 'send'])
 <style lang="scss" scoped>
 .qa-input-bar { padding: 16px 24px 20px; background: var(--bg); }
 .qa-input-box {
-  max-width: 800px; margin: 0 auto; background: var(--card-bg);
+  max-width: 900px; margin: 0 auto; background: var(--card-bg);
   border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px;
   box-shadow: 0 2px 16px rgba(0,0,0,0.04); transition: border-color 0.2s, box-shadow 0.2s;
   &:focus-within { border-color: var(--primary); box-shadow: 0 4px 20px rgba(79,110,247,0.08); }
