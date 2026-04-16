@@ -230,7 +230,7 @@ defineExpose({ scrollToBottom, resetRefs })
 }
 :deep(.highlight-mark) {
   background: rgba(79, 110, 247, 0.15);
-  padding: 2px 2px;
+  padding: 2px 5px;
   border-radius: 2px;
 }
 
