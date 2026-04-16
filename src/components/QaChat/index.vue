@@ -6,7 +6,12 @@
 -->
 <template>
   <div class="qa-container">
-    <ChatTopBar @toggle-sidebar="$emit('toggle-sidebar')" />
+    <ChatTopBar
+      :has-chat="hasChat && !loading"
+      :summarizing="summarizing"
+      @toggle-sidebar="$emit('toggle-sidebar')"
+      @summarize="handleSummarize"
+    />
 
     <!-- 欢迎页（无对话时） -->
     <ChatWelcome
@@ -26,19 +31,28 @@
       />
       <ChatInput v-model="question" :loading="loading" @send="handleAsk" />
     </template>
+
+    <!-- 总结弹窗 -->
+    <SummaryModal
+      :visible="showSummary"
+      :content="summaryContent"
+      :loading="summarizing"
+      @close="showSummary = false"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRagStore } from '../../store/ragStore.js'
-import { askWithRAG } from '../../utils/services/llm.js'
+import { askWithRAG, summarizeChat } from '../../utils/services/llm.js'
 import { toast } from '../../utils/tools/toast.js'
 
 import ChatTopBar from './ChatTopBar.vue'
 import ChatWelcome from './ChatWelcome.vue'
 import ChatMessages from './ChatMessages.vue'
 import ChatInput from './ChatInput.vue'
+import SummaryModal from './SummaryModal.vue'
 
 defineEmits(['toggle-sidebar'])
 
@@ -49,6 +63,28 @@ const pendingQuestion = ref('')
 const messagesRef = ref(null)
 
 const hasChat = computed(() => ragStore.currentChat.length > 0 || !!pendingQuestion.value || loading.value)
+
+// ===== 总结对话 =====
+const showSummary = ref(false)
+const summaryContent = ref('')
+const summarizing = ref(false)
+
+const handleSummarize = async () => {
+  if (summarizing.value || !ragStore.currentChat.length) return
+  showSummary.value = true
+  summarizing.value = true
+  summaryContent.value = ''
+
+  try {
+    summaryContent.value = await summarizeChat(ragStore.currentChat)
+  } catch (error) {
+    console.error('总结生成失败：', error)
+    toast.error('总结生成失败，请稍后重试')
+    showSummary.value = false
+  } finally {
+    summarizing.value = false
+  }
+}
 
 /** 发送提问 */
 const handleAsk = async () => {

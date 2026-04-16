@@ -4,50 +4,49 @@
 -->
 <template>
   <div class="kb-page">
-    <!-- 顶部栏 -->
+    <!-- 顶部栏：只留标题 -->
     <div class="kb-header">
-      <div class="kb-header-left">
-        <router-link to="/app" class="kb-back"><ArrowLeft :size="18" /></router-link>
-        <h2><Library :size="20" /> 个人知识库</h2>
+      <router-link to="/app" class="kb-back"><ArrowLeft :size="18" /></router-link>
+      <h2><Library :size="20" /> 个人知识库</h2>
+    </div>
+
+    <!-- 工具栏：标签 + 操作按钮同一行 -->
+    <div class="kb-toolbar">
+      <div class="kb-toolbar-left">
+        <button class="kb-tag" :class="{ active: activeTag === '' }" @click="activeTag = ''">全部 ({{ ragStore.documentList.length }})</button>
+        <button class="kb-tag" :class="{ active: activeTag === t }" v-for="t in ragStore.tags" :key="t" @click="activeTag = t">
+          {{ t }} ({{ ragStore.documentList.filter(d => d.tag === t).length }})
+        </button>
       </div>
-      <div class="kb-header-right">
-        <div class="kb-search">
-          <Search :size="15" />
-          <input v-model="searchQuery" placeholder="搜索文档..." />
-          <button v-if="searchQuery" class="kb-search-clear" @click="searchQuery = ''"><X :size="13" /></button>
+      <div class="kb-toolbar-right">
+        <!-- 搜索 -->
+        <div class="kb-search" :class="{ expanded: searchExpanded }">
+          <button class="kb-sm-btn" @click="searchExpanded = !searchExpanded; searchExpanded && $nextTick(() => $refs.searchInput?.focus())">
+            <Search :size="14" />
+          </button>
+          <input v-if="searchExpanded" ref="searchInput" v-model="searchQuery" placeholder="搜索..."
+            @blur="!searchQuery && (searchExpanded = false)" @keyup.escape="searchQuery = ''; searchExpanded = false" />
+          <button v-if="searchQuery" class="kb-search-clear" @click="searchQuery = ''"><X :size="12" /></button>
         </div>
-        <!-- 自定义排序下拉 -->
+        <!-- 排序 -->
         <div class="kb-sort-wrap" @click.stop>
-          <button class="kb-sort-btn" @click="showSortMenu = !showSortMenu">
-            <ArrowUpDown :size="14" /> {{ sortLabels[sortBy] }}
-            <ChevronDown :size="13" class="sort-arrow" :class="{ open: showSortMenu }" />
+          <button class="kb-sm-btn" @click="showSortMenu = !showSortMenu" :title="'排序：' + sortLabels[sortBy]">
+            <ArrowUpDown :size="14" />
           </button>
           <div v-if="showSortMenu" class="kb-sort-menu">
-            <div
-              v-for="opt in sortOptions" :key="opt.value"
-              class="kb-sort-option"
-              :class="{ active: sortBy === opt.value }"
-              @click="sortBy = opt.value; showSortMenu = false"
-            >
-              <component :is="opt.icon" :size="14" />
-              {{ opt.label }}
-              <Check v-if="sortBy === opt.value" :size="14" class="sort-check" />
+            <div v-for="opt in sortOptions" :key="opt.value" class="kb-sort-option"
+              :class="{ active: sortBy === opt.value }" @click="sortBy = opt.value; showSortMenu = false">
+              <component :is="opt.icon" :size="13" /> {{ opt.label }}
+              <Check v-if="sortBy === opt.value" :size="13" class="sort-check" />
             </div>
           </div>
         </div>
-        <button class="kb-upload-btn" @click="$refs.fileInput.click()">
-          <Upload :size="15" /> 上传文档
+        <!-- 上传 -->
+        <button class="kb-sm-btn primary" @click="$refs.fileInput.click()" title="上传文档">
+          <Upload :size="14" />
         </button>
         <input ref="fileInput" type="file" accept=".txt,.md,.pdf,.docx" @change="handleFileUpload" style="display:none" multiple />
       </div>
-    </div>
-
-    <!-- 标签筛选 -->
-    <div class="kb-tags">
-      <button class="kb-tag" :class="{ active: activeTag === '' }" @click="activeTag = ''">全部 ({{ ragStore.documentList.length }})</button>
-      <button class="kb-tag" :class="{ active: activeTag === t }" v-for="t in ragStore.tags" :key="t" @click="activeTag = t">
-        {{ t }} ({{ ragStore.documentList.filter(d => d.tag === t).length }})
-      </button>
     </div>
 
     <!-- 文档卡片列表 -->
@@ -57,13 +56,19 @@
         <p>{{ searchQuery ? '没有找到匹配的文档' : '还没有文档，点击上传开始吧' }}</p>
       </div>
       <div class="kb-card" v-for="doc in filteredDocs" :key="doc.fileName" @click="openPreview(doc)">
-        <div class="kb-card-icon"><FileText :size="28" /></div>
-        <div class="kb-card-info">
-          <div class="kb-card-name">{{ doc.fileName }}</div>
-          <div class="kb-card-meta">
-            <span><Tag :size="12" /> {{ doc.tag }}</span>
-            <span>{{ doc.textChunks.length }} 块</span>
-            <span>{{ doc.uploadTime }}</span>
+        <!-- 预览区：显示文档前几行内容 -->
+        <div class="kb-card-preview">
+          <p class="kb-card-preview-text">{{ getPreviewText(doc) }}</p>
+        </div>
+        <!-- 信息区 -->
+        <div class="kb-card-body">
+          <div class="kb-card-name" :title="doc.fileName">{{ doc.fileName }}</div>
+          <div class="kb-card-footer">
+            <span class="kb-card-type" :class="getFileType(doc.fileName)">
+              <span class="type-letter">{{ getTypeLetter(doc.fileName) }}</span>
+              {{ getTypeLabel(doc.fileName) }}
+            </span>
+            <span class="kb-card-time">{{ formatTime(doc.uploadTime) }}</span>
           </div>
         </div>
         <button class="kb-card-delete" @click.stop="handleDelete(doc.fileName)" title="删除">
@@ -105,7 +110,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ArrowLeft, Library, Search, Upload, FileText, Tag, Trash2, Inbox, X, ArrowUpDown, ChevronDown, Check, Clock, ArrowDown, ArrowUp, Type, Layers } from 'lucide-vue-next'
+import { ArrowLeft, Library, Search, Upload, FileText, Tag, Trash2, Inbox, X, ArrowUpDown, ChevronDown, Check, Clock, ArrowDown, ArrowUp, Type, Layers, FileType, FileCode, FileImage } from 'lucide-vue-next'
 import { useRagStore } from '../store/ragStore.js'
 import { storeVectors, removeDocVectors, smartChunkText } from '../utils/services/vector.js'
 import { parseDocument } from '../utils/services/docParser.js'
@@ -118,6 +123,7 @@ onMounted(() => {
 })
 
 const searchQuery = ref('')
+const searchExpanded = ref(false)
 const sortBy = ref('time-desc')
 const showSortMenu = ref(false)
 const sortOptions = [
@@ -132,6 +138,40 @@ const uploading = ref(false)
 const uploadMsg = ref('')
 const previewDoc = ref(null)
 const previewTab = ref('raw')
+
+/** 获取文件扩展名 */
+const getFileExt = (name) => name.split('.').pop().toLowerCase()
+
+/** 获取文件类型分类 */
+const getFileType = (name) => {
+  const ext = getFileExt(name)
+  return { pdf: 'type-pdf', docx: 'type-docx', md: 'type-md', txt: 'type-txt' }[ext] || 'type-txt'
+}
+
+/** 获取类型字母标识 */
+const getTypeLetter = (name) => {
+  const ext = getFileExt(name)
+  return { pdf: 'P', docx: 'W', md: 'M', txt: 'T' }[ext] || 'T'
+}
+
+/** 获取类型标签文字 */
+const getTypeLabel = (name) => {
+  const ext = getFileExt(name)
+  return { pdf: 'PDF', docx: 'WORD', md: 'MARKDOWN', txt: 'TEXT' }[ext] || 'TEXT'
+}
+
+/** 获取文档预览文本（前 120 字） */
+const getPreviewText = (doc) => {
+  const raw = doc.rawText || doc.textChunks?.join(' ') || ''
+  return raw.slice(0, 120).replace(/\n/g, ' ') || '暂无预览'
+}
+
+/** 格式化时间 */
+const formatTime = (timeStr) => {
+  if (!timeStr) return ''
+  const parts = timeStr.split(' ')
+  return parts[0] || timeStr
+}
 
 /** 过滤 + 排序后的文档列表 */
 const filteredDocs = computed(() => {
@@ -185,119 +225,129 @@ const openPreview = (doc) => { previewDoc.value = doc; previewTab.value = 'raw' 
 </script>
 
 <style lang="scss" scoped>
-.kb-page { min-height: 100vh; background: var(--bg); padding: 24px 32px; }
 
-// 顶部
-.kb-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-.kb-header-left { display: flex; align-items: center; gap: 12px;
-  h2 { font-size: 20px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; margin: 0; }
+.kb-page { min-height: 100vh; background: var(--bg); }
+
+.kb-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 18px 28px; background: var(--card-bg);
+  h2 { font-size: 18px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; margin: 0; }
 }
 .kb-back {
-  width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border);
-  background: var(--card-bg); color: var(--text); display: flex; align-items: center;
+  width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); display: flex; align-items: center;
   justify-content: center; text-decoration: none; transition: all 0.15s;
   &:hover { border-color: var(--primary); color: var(--primary); }
 }
-.kb-header-right { display: flex; align-items: center; gap: 10px; }
+
+// 工具栏
+.kb-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 28px; border-top: 1px solid var(--border); background: var(--card-bg);
+  gap: 10px;
+}
+.kb-toolbar-left { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+.kb-toolbar-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+.kb-sm-btn {
+  width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text-secondary); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  &:hover { border-color: var(--primary); color: var(--primary); }
+  &.primary { background: var(--primary); color: #fff; border-color: var(--primary);
+    &:hover { background: var(--primary-hover); }
+  }
+}
+
 .kb-search {
-  display: flex; align-items: center; gap: 6px; padding: 7px 12px;
-  background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;
-  color: var(--text-secondary); transition: border-color 0.2s;
-  &:focus-within { border-color: var(--primary); }
-  input { border: none; background: none; outline: none; font-size: 13px; color: var(--text); width: 160px;
+  display: flex; align-items: center;
+  &.expanded {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding-right: 3px;
+    .kb-sm-btn { border: none; background: none; width: 26px; }
+    input { width: 110px; padding: 0 6px; }
+    &:focus-within { border-color: var(--primary); }
+  }
+  input { border: none; background: none; outline: none; font-size: 12px; color: var(--text); width: 0; transition: width 0.2s;
     &::placeholder { color: var(--text-secondary); }
   }
 }
 .kb-search-clear {
-  width: 20px; height: 20px; border: none; background: none; border-radius: 50%;
+  width: 18px; height: 18px; border: none; background: none; border-radius: 50%;
   color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
-  &:hover { background: var(--bg); color: var(--text); }
+  &:hover { color: var(--text); }
 }
 
-// 自定义排序下拉
 .kb-sort-wrap { position: relative; }
-.kb-sort-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px;
-  background: var(--card-bg); font-size: 13px; color: var(--text);
-  cursor: pointer; transition: all 0.15s; white-space: nowrap;
-  &:hover { border-color: var(--primary); }
-}
-.sort-arrow { transition: transform 0.2s; &.open { transform: rotate(180deg); } }
 .kb-sort-menu {
-  position: absolute; top: calc(100% + 6px); right: 0; z-index: 20;
-  background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.1); padding: 6px; min-width: 160px;
-  animation: fadeIn 0.15s;
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 20;
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1); padding: 4px; min-width: 130px;
 }
 .kb-sort-option {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 12px; border-radius: 6px; font-size: 13px;
-  color: var(--text); cursor: pointer; transition: background 0.12s;
+  display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 5px;
+  font-size: 12px; color: var(--text); cursor: pointer; transition: background 0.12s;
   &:hover { background: var(--bg); }
   &.active { color: var(--primary); font-weight: 500; }
 }
 .sort-check { margin-left: auto; color: var(--primary); }
-.kb-upload-btn {
-  display: flex; align-items: center; gap: 6px; padding: 8px 16px;
-  background: var(--primary); color: #fff; border: none; border-radius: 8px;
-  font-size: 13px; cursor: pointer; transition: background 0.2s;
-  &:hover { background: var(--primary-hover); }
-}
 
-// 标签
-.kb-tags { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
 .kb-tag {
-  padding: 5px 14px; border: 1px solid var(--border); border-radius: 16px;
+  padding: 4px 12px; border: 1px solid var(--border); border-radius: 14px;
   background: var(--card-bg); font-size: 12px; color: var(--text-secondary);
   cursor: pointer; transition: all 0.15s;
   &:hover { border-color: var(--primary); color: var(--primary); }
   &.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 }
 
-// 卡片网格
-.kb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+// 卡片
+.kb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; padding: 20px 28px; }
 .kb-empty {
   grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center;
   gap: 12px; padding: 60px 0; color: var(--text-secondary);
   p { font-size: 14px; }
 }
 .kb-card {
-  display: flex; align-items: center; gap: 14px; padding: 16px;
-  background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
-  cursor: pointer; transition: all 0.15s; position: relative;
-  &:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); transform: translateY(-1px); }
+  display: flex; flex-direction: column; background: var(--card-bg);
+  border: 1px solid var(--border); border-radius: 12px;
+  cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+  &:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); transform: translateY(-2px); }
   &:hover .kb-card-delete { opacity: 1; }
 }
-.kb-card-icon { color: var(--primary); flex-shrink: 0; }
-.kb-card-info { flex: 1; min-width: 0; }
-.kb-card-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
-.kb-card-meta { display: flex; gap: 10px; font-size: 11px; color: var(--text-secondary);
-  span { display: flex; align-items: center; gap: 3px; }
+.kb-card-preview {
+  height: 100px; padding: 12px; background: var(--bg);
+  border-bottom: 1px solid var(--border); overflow: hidden; position: relative;
+  &::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 30px; background: linear-gradient(transparent, var(--bg)); }
 }
+.kb-card-preview-text { font-size: 11px; line-height: 1.5; color: var(--text-secondary); margin: 0; word-break: break-all; }
+.kb-card-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.kb-card-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kb-card-footer { display: flex; align-items: center; justify-content: space-between; }
+.kb-card-type {
+  display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
+  .type-letter { width: 16px; height: 16px; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: #fff; }
+  &.type-pdf { color: #ef4444; .type-letter { background: #ef4444; } }
+  &.type-docx { color: #3b82f6; .type-letter { background: #3b82f6; } }
+  &.type-md { color: #10b981; .type-letter { background: #10b981; } }
+  &.type-txt { color: #8b5cf6; .type-letter { background: #8b5cf6; } }
+}
+.kb-card-time { font-size: 11px; color: var(--text-secondary); }
 .kb-card-delete {
-  position: absolute; top: 10px; right: 10px; width: 28px; height: 28px;
-  border: none; background: none; border-radius: 6px; color: var(--text-secondary);
+  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px;
+  border: none; background: var(--card-bg); border-radius: 5px; color: var(--text-secondary);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  opacity: 0; transition: all 0.15s;
-  &:hover { background: var(--danger-hover-bg); color: #f53f3f; }
+  opacity: 0; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  &:hover { color: #f53f3f; }
 }
 
-// 上传进度
 .kb-uploading {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
   background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px;
   padding: 10px 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); font-size: 13px; color: var(--text);
   display: flex; align-items: center; gap: 8px; z-index: 100;
 }
-.spinner {
-  width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary);
-  border-radius: 50%; animation: spin 0.6s linear infinite;
-}
+.spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-// 预览弹窗
 .kb-preview-modal { width: 700px; max-height: 80vh; }
 .preview-tabs { display: flex; padding: 0 24px; border-bottom: 1px solid var(--border); }
 .preview-tab {
@@ -310,10 +360,9 @@ const openPreview = (doc) => { previewDoc.value = doc; previewTab.value = 'raw' 
 .preview-chunks { display: flex; flex-direction: column; gap: 8px; }
 
 @media (max-width: 768px) {
-  .kb-page { padding: 16px; }
-  .kb-header { flex-direction: column; align-items: flex-start; }
-  .kb-header-right { flex-wrap: wrap; }
-  .kb-grid { grid-template-columns: 1fr; }
+  .kb-header { padding: 14px 16px; }
+  .kb-toolbar { padding: 8px 16px; }
+  .kb-grid { grid-template-columns: 1fr; padding: 16px; }
   .kb-preview-modal { width: 95vw; }
 }
 </style>

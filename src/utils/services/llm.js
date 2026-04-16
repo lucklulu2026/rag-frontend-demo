@@ -103,3 +103,40 @@ ${context}`
 }
 
 export { askWithRAG }
+
+/**
+ * 总结当前对话：将所有问答内容发给大模型，生成结构化重点总结
+ * @param {ChatMessage[]} chatMessages - 当前会话的所有对话
+ * @returns {Promise<string>} Markdown 格式的总结内容
+ */
+const summarizeChat = async (chatMessages) => {
+  if (!chatMessages.length) throw new Error('没有对话内容可总结')
+
+  // 将对话拼成文本
+  const chatText = chatMessages
+    .map((m, i) => `【问题 ${i + 1}】${m.question}\n【回答 ${i + 1}】${m.answer}`)
+    .join('\n\n')
+
+  const messages = [
+    {
+      role: 'system',
+      content: `你是一个专业的内容总结助手。请对以下对话内容进行结构化总结，输出 Markdown 格式，包含：
+1. **核心要点**：提炼 3-5 个关键信息点
+2. **详细摘要**：用简洁的段落概括对话的主要内容
+3. **关键词**：列出 5-8 个关键词/标签
+
+要求：简洁准确，重点突出，使用中文。`
+    },
+    { role: 'user', content: `请总结以下对话内容：\n\n${chatText}` }
+  ]
+
+  const data = await callDashScope(CHAT_PATH, {
+    model: 'qwen-turbo',
+    input: { messages },
+    parameters: { temperature: 0.3, max_tokens: 2000 },
+  })
+
+  return data.output?.text || '总结生成失败'
+}
+
+export { summarizeChat }
