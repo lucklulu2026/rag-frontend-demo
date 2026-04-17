@@ -86,6 +86,24 @@ export const useRagStore = defineStore('rag', {
       await db.sessions.put(toRaw(session))
     },
 
+    /** 删除当前会话中的指定消息 */
+    async deleteMessage(index) {
+      const session = this.sessions.find(s => s.id === this.currentSessionId)
+      if (!session || index < 0 || index >= session.messages.length) return
+      session.messages.splice(index, 1)
+      await db.sessions.put(toRaw(session))
+    },
+
+    /** 更新当前会话中指定消息的回答 */
+    async updateMessage(index, answer, relatedTexts = []) {
+      const session = this.sessions.find(s => s.id === this.currentSessionId)
+      if (!session || index < 0 || index >= session.messages.length) return
+      session.messages[index].answer = answer
+      session.messages[index].relatedTexts = relatedTexts
+      session.messages[index].time = new Date().toLocaleString()
+      await db.sessions.put(toRaw(session))
+    },
+
     async renameSession(sessionId, newTitle) {
       const session = this.sessions.find(s => s.id === sessionId)
       if (session) {

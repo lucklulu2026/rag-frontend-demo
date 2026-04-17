@@ -109,6 +109,7 @@ import {
 } from 'lucide-vue-next'
 import { useRagStore } from '../../store/ragStore.js'
 import { theme, toggleTheme } from '../../utils/tools/theme.js'
+import { confirm } from '../../utils/tools/confirm.js'
 import LogoSvg from '../../assets/svg/logo12.svg?component'
 
 defineProps({
@@ -159,6 +160,13 @@ const confirmRename = async () => {
 
 // 删除
 const handleDelete = async () => {
+  const ok = await confirm({
+    title: '删除对话',
+    message: '确定要删除这条对话吗？删除后无法恢复。',
+    confirmText: '删除',
+    type: 'danger',
+  })
+  if (!ok) return
   await ragStore.deleteSession(menuOpenId.value)
   menuOpenId.value = null
 }

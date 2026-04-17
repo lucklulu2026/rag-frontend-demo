@@ -14,8 +14,8 @@
       </button>
       <h3><MessageSquare :size="18" /> 智能问答</h3>
     </div>
-    <div v-if="hasChat" class="qa-top-actions">
-      <button class="summarize-btn" @click="$emit('summarize')" :disabled="summarizing">
+    <div class="qa-top-actions">
+      <button class="summarize-btn" @click="$emit('summarize')" :disabled="!hasChat || summarizing">
         <Sparkles :size="14" />
         {{ summarizing ? '生成中...' : '总结对话' }}
       </button>
@@ -35,8 +35,9 @@ defineEmits(['toggle-sidebar', 'summarize'])
 
 <style lang="scss" scoped>
 .qa-top-bar {
+  height: 64px; min-height: 64px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 24px; background: var(--card-bg); border-bottom: 1px solid var(--border);
+  padding: 0 24px; background: var(--card-bg); border-bottom: 1px solid var(--border);
   h3 { font-size: 16px; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 6px; }
 }
 .qa-top-left { display: flex; align-items: center; gap: 8px; }

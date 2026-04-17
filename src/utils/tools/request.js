@@ -53,3 +53,77 @@ export async function callDashScope(apiPath, body) {
 
   return response.json()
 }
+
+/**
+ * 流式调用通义 DashScope API（SSE）
+ * @param {string} apiPath - API 路径
+ * @param {Object} body - 请求体（会自动注入 stream: true）
+ * @param {(chunk: string) => void} onChunk - 每收到一段文本时的回调
+ * @returns {Promise<string>} 完整的回答文本
+ */
+export async function callDashScopeStream(apiPath, body, onChunk) {
+  let url, headers
+
+  if (IS_DEV) {
+    url = `/dashscope${apiPath}`
+    headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${TONGYI_API_KEY}`,
+      'Accept': 'text/event-stream',
+    }
+  } else {
+    url = '/api/proxy-stream'
+    headers = {
+      'Content-Type': 'application/json',
+      'X-Target-Path': apiPath,
+    }
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const errText = await response.text()
+    throw new Error(`API 请求失败 (${response.status}): ${errText}`)
+  }
+
+  // 读取 SSE 流
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let fullText = ''
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+
+    // 按行解析 SSE 数据
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || '' // 最后一行可能不完整，留到下次
+
+    for (const line of lines) {
+      if (!line.startsWith('data:')) continue
+      const data = line.slice(5).trim()
+      if (!data || data === '[DONE]') continue
+
+      try {
+        const json = JSON.parse(data)
+        // 增量模式：output.text 是本次新增的文本片段
+        const chunk = json.output?.text || ''
+        if (chunk) {
+          fullText += chunk
+          onChunk(fullText)
+        }
+      } catch (e) {
+        // 忽略解析错误
+      }
+    }
+  }
+
+  return fullText
+}

@@ -27,7 +27,10 @@
         ref="messagesRef"
         :messages="ragStore.currentChat"
         :pending-question="pendingQuestion"
+        :streaming-text="streamingText"
         :loading="loading"
+        @regenerate="handleRegenerate"
+        @delete-msg="handleDeleteMsg"
       />
       <ChatInput v-model="question" :loading="loading" @send="handleAsk" />
     </template>
@@ -45,7 +48,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRagStore } from '../../store/ragStore.js'
-import { askWithRAG, summarizeChat } from '../../utils/services/llm.js'
+import { askWithRAG, askWithRAGStream, summarizeChat } from '../../utils/services/llm.js'
 import { toast } from '../../utils/tools/toast.js'
 
 import ChatTopBar from './ChatTopBar.vue'
@@ -60,6 +63,8 @@ const ragStore = useRagStore()
 const question = ref('')
 const loading = ref(false)
 const pendingQuestion = ref('')
+/** @type {import('vue').Ref<string>} 正在流式生成的 AI 回答文本 */
+const streamingText = ref('')
 const messagesRef = ref(null)
 
 const hasChat = computed(() => ragStore.currentChat.length > 0 || !!pendingQuestion.value || loading.value)
@@ -86,22 +91,70 @@ const handleSummarize = async () => {
   }
 }
 
-/** 发送提问 */
+/** 发送提问（流式输出） */
 const handleAsk = async () => {
   if (!question.value.trim() || loading.value) return
   loading.value = true
   const q = question.value
   question.value = ''
   pendingQuestion.value = q
+  streamingText.value = ''
 
   try {
-    const { answer, references } = await askWithRAG(q, ragStore.currentChat)
+    // 先做向量检索，再流式调用大模型
+    const { answer, references } = await askWithRAGStream(
+      q,
+      ragStore.currentChat,
+      (text) => {
+        // 每收到一段文本，更新流式显示
+        streamingText.value = text
+        messagesRef.value?.scrollToBottom()
+      }
+    )
+    // 流式结束，保存完整消息
     if (answer) await ragStore.addMessage(q, answer, references)
   } catch (error) {
     console.error('问答交互失败：', error)
     toast.error('问答失败，请检查网络连接后重试')
   } finally {
     pendingQuestion.value = ''
+    streamingText.value = ''
+    loading.value = false
+  }
+}
+
+/** 删除指定消息 */
+const handleDeleteMsg = async (index) => {
+  await ragStore.deleteMessage(index)
+  toast.info('消息已删除')
+}
+
+/** 重新生成指定消息的回答 */
+const handleRegenerate = async (index) => {
+  const msg = ragStore.currentChat[index]
+  if (!msg || loading.value) return
+
+  loading.value = true
+  // 直接清空该消息的回答，原地显示流式内容
+  const originalAnswer = msg.answer
+  msg.answer = ''
+
+  try {
+    const historyBefore = ragStore.currentChat.slice(0, index)
+    const { answer, references } = await askWithRAGStream(
+      msg.question,
+      historyBefore,
+      (text) => {
+        msg.answer = text
+        messagesRef.value?.scrollToBottom()
+      }
+    )
+    if (answer) await ragStore.updateMessage(index, answer, references)
+  } catch (error) {
+    console.error('重新生成失败：', error)
+    msg.answer = originalAnswer // 失败时恢复原回答
+    toast.error('重新生成失败，请稍后重试')
+  } finally {
     loading.value = false
   }
 }

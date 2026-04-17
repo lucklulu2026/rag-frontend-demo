@@ -41,6 +41,18 @@
               </div>
             </div>
           </div>
+          <!-- 消息操作栏 -->
+          <div class="msg-actions">
+            <button class="msg-action-btn" @click.stop="handleCopy(item.answer)" title="复制">
+              <Copy :size="13" />
+            </button>
+            <button class="msg-action-btn" @click.stop="$emit('regenerate', index)" title="重新生成">
+              <RefreshCw :size="13" />
+            </button>
+            <button class="msg-action-btn msg-action-delete" @click.stop="handleDelete(index)" title="删除">
+              <Trash2 :size="13" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -50,10 +62,17 @@
       <div class="message message-user">
         <div class="bubble bubble-user">{{ pendingQuestion }}</div>
       </div>
+      <!-- 流式输出中的 AI 回复 -->
+      <div v-if="streamingText" class="message message-ai">
+        <div class="bubble bubble-ai">
+          <div class="answer-text markdown-body" v-html="renderMarkdown(streamingText)"></div>
+          <span class="streaming-cursor"></span>
+        </div>
+      </div>
     </div>
 
-    <!-- 加载动画 -->
-    <div v-if="loading" class="loading-dots">
+    <!-- 加载动画（仅在等待首个 token 时显示） -->
+    <div v-if="loading && !streamingText" class="loading-dots">
       <div class="dots"><span></span><span></span><span></span></div>
     </div>
 
@@ -74,15 +93,19 @@
 
 <script setup>
 import { ref, reactive, computed, nextTick, watch } from 'vue'
-import { Paperclip, ChevronDown, FileText, X } from 'lucide-vue-next'
+import { Paperclip, ChevronDown, FileText, X, Copy, RefreshCw, Trash2 } from 'lucide-vue-next'
 import { renderMarkdown } from '../../utils/tools/markdown.js'
 import { useRagStore } from '../../store/ragStore.js'
+import { toast } from '../../utils/tools/toast.js'
+import { confirm } from '../../utils/tools/confirm.js'
 
 const props = defineProps({
   /** @type {Array<{question: string, answer: string, relatedTexts?: Array}>} */
   messages: { type: Array, default: () => [] },
   /** @type {string} 正在等待回答的问题文本 */
   pendingQuestion: { type: String, default: '' },
+  /** @type {string} 正在流式生成的 AI 回答 */
+  streamingText: { type: String, default: '' },
   /** @type {boolean} 是否正在请求 AI */
   loading: { type: Boolean, default: false },
 })
@@ -174,6 +197,39 @@ const openSourceDoc = (refItem) => {
 }
 
 defineExpose({ scrollToBottom, resetRefs })
+const emit = defineEmits(['regenerate', 'delete-msg'])
+
+/** 删除消息（二次确认） */
+const handleDelete = async (index) => {
+  const ok = await confirm({
+    title: '删除消息',
+    message: '确定要删除这条问答记录吗？删除后无法恢复。',
+    confirmText: '删除',
+    type: 'danger',
+  })
+  if (ok) emit('delete-msg', index)
+}
+
+/** 复制消息内容到剪贴板（兼容非 HTTPS） */
+const handleCopy = async (text) => {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      // fallback：用 textarea + execCommand
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.cssText = 'position:fixed;left:-9999px'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    toast.success('已复制到剪贴板')
+  } catch {
+    toast.error('复制失败')
+  }
+}
 </script>
 
 <style lang="scss" scoped>
@@ -198,6 +254,35 @@ defineExpose({ scrollToBottom, resetRefs })
   }
 }
 @keyframes dotPulse { 0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
+
+// 消息操作栏
+.msg-actions {
+  display: flex; gap: 2px; margin-top: 6px; opacity: 0;
+  transition: opacity 0.15s;
+}
+.bubble-ai:hover .msg-actions { opacity: 1; }
+
+.msg-action-btn {
+  width: 28px; height: 28px; border: none; background: none; border-radius: 6px;
+  color: var(--text-secondary); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s;
+  &:hover { background: var(--bg); color: var(--text); }
+}
+.msg-action-delete:hover { color: #f53f3f; background: var(--danger-hover-bg); }
+
+// 流式输出光标
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 16px;
+  background: var(--primary);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursorBlink 0.8s infinite;
+}
+@keyframes cursorBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
 // 引用来源
 .references { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
 .ref {

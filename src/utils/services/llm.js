@@ -4,7 +4,7 @@
  * @module services/llm
  */
 import { searchSimilar } from './vector.js'
-import { callDashScope } from '../tools/request.js'
+import { callDashScope, callDashScopeStream } from '../tools/request.js'
 
 /** @type {string} 通义千问对话 API 路径 */
 const CHAT_PATH = '/api/v1/services/aigc/text-generation/generation'
@@ -103,6 +103,77 @@ ${context}`
 }
 
 export { askWithRAG }
+
+/**
+ * 流式 RAG 问答：向量检索 + 流式输出
+ * @param {string} question - 用户提问
+ * @param {ChatMessage[]} chatHistory - 历史对话
+ * @param {(text: string) => void} onChunk - 每次收到新文本时的回调
+ * @returns {Promise<{answer: string, references: SearchResult[]}>}
+ */
+const askWithRAGStream = async (question, chatHistory = [], onChunk) => {
+  if (!question.trim()) return { answer: '', references: [] }
+
+  // 1. 向量检索
+  let references = []
+  let context = ''
+  try {
+    references = await searchSimilar(question, TOP_K)
+    if (references.length > 0) {
+      context = references
+        .map((r, i) => `[${i + 1}] 来源：${r.source}\n内容：${r.text}`)
+        .join('\n\n')
+    }
+  } catch (err) {
+    console.warn('向量检索失败：', err)
+  }
+
+  // 2. 构建 messages
+  const messages = []
+  if (context) {
+    messages.push({
+      role: 'system',
+      content: `你是一个知识库问答助手。请根据以下知识库资料回答用户问题。
+回答时请在相关内容后标注引用编号（如 [1]、[2]），方便用户溯源。
+如果资料中没有相关信息，请如实说明"知识库中未找到相关信息"。
+
+知识库资料：
+${context}`
+    })
+  } else {
+    messages.push({
+      role: 'system',
+      content: '你是一个智能问答助手。当前知识库为空，请基于你的通用知识回答问题，并提示用户可以上传文档来获得更精准的回答。'
+    })
+  }
+
+  const recentHistory = chatHistory.slice(-MAX_HISTORY_ROUNDS)
+  for (const item of recentHistory) {
+    messages.push({ role: 'user', content: item.question })
+    messages.push({ role: 'assistant', content: item.answer })
+  }
+  messages.push({ role: 'user', content: question })
+
+  // 3. 流式调用
+  try {
+    const answer = await callDashScopeStream(CHAT_PATH, {
+      model: 'qwen-turbo',
+      input: { messages },
+      parameters: {
+        temperature: 0.7,
+        max_tokens: 1500,
+        incremental_output: true,  // 通义千问增量输出模式
+      },
+    }, onChunk)
+
+    return { answer: answer || '抱歉，未能获取到有效的回答。', references }
+  } catch (error) {
+    console.error('通义千问流式调用失败：', error)
+    throw error
+  }
+}
+
+export { askWithRAGStream }
 
 /**
  * 总结当前对话：将所有问答内容发给大模型，生成结构化重点总结

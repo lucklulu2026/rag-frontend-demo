@@ -118,6 +118,7 @@ import { useRagStore } from '../store/ragStore.js'
 import { storeVectors, removeDocVectors, smartChunkText } from '../utils/services/vector.js'
 import { parseDocument } from '../utils/services/docParser.js'
 import { toast } from '../utils/tools/toast.js'
+import { confirm } from '../utils/tools/confirm.js'
 
 const ragStore = useRagStore()
 onMounted(() => {
@@ -219,6 +220,13 @@ const handleFileUpload = async (e) => {
 }
 
 const handleDelete = async (fileName) => {
+  const ok = await confirm({
+    title: '删除文档',
+    message: `确定要删除「${fileName}」吗？文档和向量数据将被永久删除。`,
+    confirmText: '删除',
+    type: 'danger',
+  })
+  if (!ok) return
   await ragStore.removeDocument(fileName)
   await removeDocVectors(fileName)
   toast.info('文档已删除')

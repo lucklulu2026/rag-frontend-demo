@@ -305,7 +305,7 @@ body {
 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 // ===== 图标工具类 =====
-button, .btn, .history-btn, .new-chat-btn, .welcome-hint,
+.btn, .welcome-hint,
 .session-menu-item, .preview-tab, .preview-meta, .ref-toggle {
   display: flex;
   align-items: center;
