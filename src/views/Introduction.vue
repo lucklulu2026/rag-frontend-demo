@@ -3,7 +3,10 @@
     <!-- 导航栏 -->
     <nav class="intro-nav">
       <div class="intro-nav-inner">
-        <div class="intro-logo">🧠 RAG 智能知识库</div>
+        <div class="intro-logo">
+          <img src="../assets/images/animal_logo.png" alt="logo" class="intro-logo-img" />
+          RAG 智能知识库
+        </div>
         <router-link to="/app" class="intro-nav-btn">开始使用</router-link>
       </div>
     </nav>
@@ -167,7 +170,11 @@ const scrollToFeatures = () => {
   }
 }
 
-.intro-logo { font-size: 18px; font-weight: 700; color: var(--text); }
+.intro-logo {
+  font-size: 18px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+}
+.intro-logo-img { width: 28px; height: 28px; object-fit: contain; }
 
 // Hero
 .intro-hero {

@@ -59,6 +59,9 @@
         <!-- 预览区：显示文档前几行内容 -->
         <div class="kb-card-preview">
           <p class="kb-card-preview-text">{{ getPreviewText(doc) }}</p>
+          <div class="kb-card-preview-mask">
+            <!-- <Eye :size="20" /> -->
+          </div>
         </div>
         <!-- 信息区 -->
         <div class="kb-card-body">
@@ -110,7 +113,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ArrowLeft, Library, Search, Upload, FileText, Tag, Trash2, Inbox, X, ArrowUpDown, ChevronDown, Check, Clock, ArrowDown, ArrowUp, Type, Layers, FileType, FileCode, FileImage } from 'lucide-vue-next'
+import { ArrowLeft, Library, Search, Upload, FileText, Tag, Trash2, Inbox, X, ArrowUpDown, ChevronDown, Check, Clock, ArrowDown, ArrowUp, Type, Layers, FileType, FileCode, FileImage, Eye } from 'lucide-vue-next'
 import { useRagStore } from '../store/ragStore.js'
 import { storeVectors, removeDocVectors, smartChunkText } from '../utils/services/vector.js'
 import { parseDocument } from '../utils/services/docParser.js'
@@ -260,10 +263,11 @@ const openPreview = (doc) => { previewDoc.value = doc; previewTab.value = 'raw' 
 }
 
 .kb-search {
-  display: flex; align-items: center;
+  display: flex; align-items: center; height: 28px;
   &.expanded {
     background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding-right: 3px;
-    .kb-sm-btn { border: none; background: none; width: 26px; }
+    box-sizing: border-box;
+    .kb-sm-btn { border: none; background: none; width: 26px; height: 26px; }
     input { width: 110px; padding: 0 6px; }
     &:focus-within { border-color: var(--primary); }
   }
@@ -318,12 +322,24 @@ const openPreview = (doc) => { previewDoc.value = doc; previewTab.value = 'raw' 
   border-bottom: 1px solid var(--border); overflow: hidden; position: relative;
   &::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 30px; background: linear-gradient(transparent, var(--bg)); }
 }
-.kb-card-preview-text { font-size: 11px; line-height: 1.5; color: var(--text-secondary); margin: 0; word-break: break-all; }
+.kb-card-preview-text {
+  padding: 12px; font-size: 11px; line-height: 1.5; color: var(--text-secondary);
+  margin: 0; word-break: break-all; background: rgba(255, 255, 255, 0.75); border: 1px solid #f0f0f0;
+  filter: blur(0.2px); transition: filter 0.3s;
+}
+.kb-card-preview-mask {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--text); opacity: 0.4; transition: opacity 0.3s;
+}
+.kb-card:hover {
+  .kb-card-preview-text { filter: blur(0); }
+  .kb-card-preview-mask { opacity: 0; }
+}
 .kb-card-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
 .kb-card-name { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kb-card-footer { display: flex; align-items: center; justify-content: space-between; }
 .kb-card-type {
-  display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
+  display: inline-flex; align-items: center; gap: 3px; font-size: 10px; letter-spacing: 0.5px;
   .type-letter { width: 16px; height: 16px; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: #fff; }
   &.type-pdf { color: #ef4444; .type-letter { background: #ef4444; } }
   &.type-docx { color: #3b82f6; .type-letter { background: #3b82f6; } }

@@ -11,7 +11,7 @@
     <div class="welcome-content">
       <!-- Logo -->
       <div class="welcome-logo">
-        <span class="logo-text">RagClaw</span>
+        <LogoSvg class="welcome-logo-svg" />
       </div>
       <!-- 输入卡片 -->
       <div class="welcome-input-box">
@@ -49,6 +49,7 @@
 
 <script setup>
 import { BookOpen, FileText, Code, SendHorizonal } from 'lucide-vue-next'
+import LogoSvg from '../../assets/svg/logo2.svg?component'
 
 defineProps({
   /** @type {string} 输入框绑定值 */
@@ -64,9 +65,11 @@ defineEmits(['update:modelValue', 'send'])
 .qa-welcome { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 24px; padding-top: 15vh; }
 .welcome-content { display: flex; flex-direction: column; align-items: center; max-width: 920px; width: 100%; }
 .welcome-logo {
-  width: 72px; height: 72px; border-radius: 18px;
   display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
-  .logo-text { font-size: 64px; font-weight: 400; color: var(--text); font-family: 'Righteous', cursive; }
+}
+.welcome-logo-svg {
+  width: 250px; height: 110px; color: var(--text);
+  :deep(svg) { width: 100%; height: 100%; display: block; }
 }
 .welcome-input-box {
   width: 100%; background: var(--card-bg); border: 1px solid var(--border);
@@ -99,7 +102,7 @@ defineEmits(['update:modelValue', 'send'])
 }
 @media (max-width: 768px) {
   .welcome-content { padding: 0 8px; }
-  .welcome-logo { width: 60px; height: 60px; border-radius: 16px; .logo-text { font-size: 26px; } }
+  .welcome-logo-svg { width: 60px; height: 60px; }
   .welcome-hints-inline { display: none; }
 }
 </style>

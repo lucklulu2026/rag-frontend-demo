@@ -7,7 +7,8 @@
     <!-- 顶部：Logo + 收起按钮 -->
     <div class="sidebar-header">
       <div class="sidebar-logo">
-        <span class="logo-text">RagClaw</span>
+        <img src="../../assets/images/animal_logo.png" alt="mascot" class="sidebar-mascot" />
+        <LogoSvg class="sidebar-logo-svg" />
       </div>
       <button class="sidebar-collapse-btn" @click="$emit('toggle')" title="收起侧边栏">
         <PanelLeftClose :size="18" />
@@ -108,6 +109,7 @@ import {
 } from 'lucide-vue-next'
 import { useRagStore } from '../../store/ragStore.js'
 import { theme, toggleTheme } from '../../utils/tools/theme.js'
+import LogoSvg from '../../assets/svg/logo12.svg?component'
 
 defineProps({
   sidebarOpen: { type: Boolean, default: false }
@@ -174,10 +176,13 @@ const handleDelete = async () => {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 16px 8px;
 }
-.sidebar-logo .logo-text {
-  font-size: 24px; font-weight: 400;
-  font-family: 'Righteous', cursive;
-  color: var(--text);
+.sidebar-logo {
+  display: flex; align-items: center; gap: 6px;
+}
+.sidebar-mascot { width: 32px; height: 32px; object-fit: contain; }
+.sidebar-logo-svg {
+  height: 40px; width: 90px; color: var(--text);
+  :deep(svg) { width: auto; height: 100%; display: block; }
 }
 .sidebar-collapse-btn {
   width: 32px; height: 32px; border: none; background: none; border-radius: 8px;
