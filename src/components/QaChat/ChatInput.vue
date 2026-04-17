@@ -63,5 +63,9 @@ defineEmits(['update:modelValue', 'send'])
   &:hover { background: linear-gradient(135deg, #3b5de7, #7c4ddb); box-shadow: 0 2px 12px rgba(79,110,247,0.3); transform: translateY(-1px); }
   &:disabled { background: #c9cdd4; cursor: not-allowed; box-shadow: none; transform: none; }
 }
-@media (max-width: 768px) { .qa-input-bar { padding: 12px 16px 16px; } }
+@media (max-width: 768px) {
+  .qa-input-bar { padding: 10px 12px 14px; }
+  .qa-input-box { padding: 10px 12px; max-width: 100%; }
+  .qa-textarea { font-size: 13px; }
+}
 </style>

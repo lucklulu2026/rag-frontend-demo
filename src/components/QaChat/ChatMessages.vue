@@ -233,7 +233,7 @@ const handleCopy = async (text) => {
 </script>
 
 <style lang="scss" scoped>
-.qa-messages { width: 950px; margin: 0 auto; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.qa-messages { width: 100%; max-width: 950px; margin: 0 auto; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
 .message {
   display: flex; gap: 14px; max-width: 75%;
   &-group { display: flex; flex-direction: column; gap: 16px; }
@@ -319,5 +319,10 @@ const handleCopy = async (text) => {
   border-radius: 2px;
 }
 
-@media (max-width: 768px) { .qa-messages { padding: 16px; } .message { max-width: 90%; } .source-preview-modal { width: 95vw; } }
+@media (max-width: 768px) {
+  .qa-messages { padding: 12px; }
+  .message { max-width: 92%; }
+  .bubble { max-width: 100%; overflow-x: auto; }
+  .source-preview-modal { width: 95vw; }
+}
 </style>

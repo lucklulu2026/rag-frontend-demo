@@ -101,8 +101,11 @@ defineEmits(['update:modelValue', 'send'])
   &:disabled { background: #c9cdd4; cursor: not-allowed; box-shadow: none; transform: none; }
 }
 @media (max-width: 768px) {
-  .welcome-content { padding: 0 8px; }
-  .welcome-logo-svg { width: 60px; height: 60px; }
+  .qa-welcome { padding: 16px; padding-top: 8vh; }
+  .welcome-content { padding: 0; max-width: 100%; }
+  .welcome-logo-svg { width: 180px; height: 85px; }
+  .welcome-input-box { padding: 12px; }
+  .welcome-textarea { font-size: 14px; }
   .welcome-hints-inline { display: none; }
 }
 </style>

@@ -3,7 +3,7 @@
     "activeCommit": 0,
     "commits": [
         {
-            "activePatchIndex": 18,
+            "activePatchIndex": 19,
             "patches": [
                 {
                     "date": 1776237299193,
@@ -80,6 +80,10 @@
                 {
                     "date": 1776403687889,
                     "content": "Index: \n===================================================================\n--- \n+++ \n@@ -67,9 +67,9 @@\n .welcome-logo {\r\n   display: flex; align-items: center; justify-content: center; margin-bottom: 20px;\r\n }\r\n .welcome-logo-svg {\r\n-  width: 240px; height: 100px; color: var(--text);\r\n+  width: 250px; height: 110px; color: var(--text);\r\n   :deep(svg) { width: 100%; height: 100%; display: block; }\r\n }\r\n .welcome-input-box {\r\n   width: 100%; background: var(--card-bg); border: 1px solid var(--border);\r\n"
+                },
+                {
+                    "date": 1776420374192,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -100,9 +100,12 @@\n   &:hover { background: linear-gradient(135deg, #3b5de7, #7c4ddb); box-shadow: 0 2px 12px rgba(79,110,247,0.3); transform: translateY(-1px); }\r\n   &:disabled { background: #c9cdd4; cursor: not-allowed; box-shadow: none; transform: none; }\r\n }\r\n @media (max-width: 768px) {\r\n-  .welcome-content { padding: 0 8px; }\r\n-  .welcome-logo-svg { width: 60px; height: 60px; }\r\n+  .qa-welcome { padding: 16px; padding-top: 8vh; }\r\n+  .welcome-content { padding: 0; max-width: 100%; }\r\n+  .welcome-logo-svg { width: 180px; height: 85px; }\r\n+  .welcome-input-box { padding: 12px; }\r\n+  .welcome-textarea { font-size: 14px; }\r\n   .welcome-hints-inline { display: none; }\r\n }\r\n </style>\r\n"
                 }
             ],
             "date": 1776237299193,
