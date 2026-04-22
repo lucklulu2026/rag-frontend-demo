@@ -15,12 +15,13 @@
         class="qa-textarea"
         placeholder="有什么问题尽管问..."
         rows="2"
-        @keydown.enter.exact.prevent="$emit('send')"
+        @keydown.enter.exact.prevent="handleSend"
         :disabled="loading"
+        :maxlength="maxLength"
       ></textarea>
       <div class="qa-input-footer">
-        <div></div>
-        <button class="send-btn" @click="$emit('send')" :disabled="loading || !modelValue?.trim()">
+        <div class="counter">{{ contentLength }}/{{ maxLength }}</div>
+        <button class="send-btn" @click="handleSend" :disabled="sendDisabled">
           <SendHorizonal :size="16" />
         </button>
       </div>
@@ -29,16 +30,33 @@
 </template>
 
 <script setup>
+import { computed, ref } from 'vue'
 import { SendHorizonal } from 'lucide-vue-next'
 
-defineProps({
+const props = defineProps({
   /** @type {string} 输入框绑定值 */
   modelValue: { type: String, default: '' },
   /** @type {boolean} 加载状态 */
   loading: { type: Boolean, default: false },
+  /** @type {number} 最大输入长度 */
+  maxLength: { type: Number, default: 1200 },
+  /** @type {number} 发送防抖间隔（毫秒） */
+  sendCooldownMs: { type: Number, default: 800 },
 })
 
-defineEmits(['update:modelValue', 'send'])
+const emit = defineEmits(['update:modelValue', 'send'])
+const lastSendAt = ref(0)
+
+const contentLength = computed(() => props.modelValue?.length || 0)
+const sendDisabled = computed(() => props.loading || !props.modelValue?.trim())
+
+const handleSend = () => {
+  if (sendDisabled.value) return
+  const now = Date.now()
+  if (now - lastSendAt.value < props.sendCooldownMs) return
+  lastSendAt.value = now
+  emit('send')
+}
 </script>
 
 <style lang="scss" scoped>
@@ -55,6 +73,7 @@ defineEmits(['update:modelValue', 'send'])
   &::placeholder { color: var(--text-secondary); }
 }
 .qa-input-footer { display: flex; align-items: center; justify-content: flex-end; margin-top: 8px; }
+.counter { font-size: 12px; color: var(--text-secondary); margin-right: 10px; }
 .send-btn {
   width: 38px; height: 38px; border-radius: 10px;
   background: linear-gradient(135deg, #4f6ef7, #8b5cf6); color: #fff;

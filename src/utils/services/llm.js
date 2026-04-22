@@ -5,6 +5,7 @@
  */
 import { searchSimilar } from './vector.js'
 import { callDashScope, callDashScopeStream } from '../tools/request.js'
+import { trackEvent } from '../tools/telemetry.js'
 
 /** @type {string} 通义千问对话 API 路径 */
 const CHAT_PATH = '/api/v1/services/aigc/text-generation/generation'
@@ -14,6 +15,8 @@ const MAX_HISTORY_ROUNDS = 5
 
 /** @type {number} 检索返回的最相关文本块数量 */
 const TOP_K = 3
+/** @type {number} 注入模型的知识库上下文最大字符数 */
+const MAX_CONTEXT_CHARS = 6000
 
 /**
  * @typedef {Object} ChatMessage
@@ -31,32 +34,17 @@ const TOP_K = 3
  * @property {number} fusedScore - RRF 融合分数
  */
 
-/**
- * RAG 问答：向量检索 + 多轮对话上下文 + 引用溯源
- * @param {string} question - 用户提问
- * @param {ChatMessage[]} chatHistory - 当前会话的历史对话
- * @returns {Promise<{answer: string, references: SearchResult[]}>} 回答和引用来源
- */
-const askWithRAG = async (question, chatHistory = []) => {
-  if (!question.trim()) {
-    return { answer: '', references: [] }
-  }
-
-  // 1. 向量检索：从知识库找最相关的文本块
-  let references = []
+const buildContext = (references) => {
   let context = ''
-  try {
-    references = await searchSimilar(question, TOP_K)
-    if (references.length > 0) {
-      context = references
-        .map((r, i) => `[${i + 1}] 来源：${r.source}\n内容：${r.text}`)
-        .join('\n\n')
-    }
-  } catch (err) {
-    console.warn('向量检索失败，将直接调用大模型：', err)
+  for (let i = 0; i < references.length; i++) {
+    const next = `[${i + 1}] 来源：${references[i].source}\n内容：${references[i].text}`
+    if (context.length + next.length + 2 > MAX_CONTEXT_CHARS) break
+    context += (context ? '\n\n' : '') + next
   }
+  return context
+}
 
-  // 2. 构建 messages 数组（system + 历史 + 当前提问）
+const buildMessages = (question, context, chatHistory = []) => {
   const messages = []
 
   // System prompt：有知识库内容时注入上下文
@@ -85,6 +73,33 @@ ${context}`
   }
 
   messages.push({ role: 'user', content: question })
+  return messages
+}
+
+/**
+ * RAG 问答：向量检索 + 多轮对话上下文 + 引用溯源
+ * @param {string} question - 用户提问
+ * @param {ChatMessage[]} chatHistory - 当前会话的历史对话
+ * @returns {Promise<{answer: string, references: SearchResult[]}>} 回答和引用来源
+ */
+const askWithRAG = async (question, chatHistory = []) => {
+  if (!question.trim()) {
+    return { answer: '', references: [] }
+  }
+
+  // 1. 向量检索：从知识库找最相关的文本块
+  let references = []
+  let context = ''
+  const startAt = performance.now()
+  try {
+    references = await searchSimilar(question, TOP_K)
+    context = buildContext(references)
+  } catch (err) {
+    console.warn('向量检索失败，将直接调用大模型：', err)
+  }
+
+  // 2. 构建 messages 数组（system + 历史 + 当前提问）
+  const messages = buildMessages(question, context, chatHistory)
 
   // 3. 调用通义千问大模型
   try {
@@ -95,8 +110,21 @@ ${context}`
     })
 
     const answer = data.output?.text || '抱歉，未能获取到有效的回答。'
+    trackEvent('rag_answer_success', {
+      mode: 'normal',
+      questionChars: question.length,
+      referencesCount: references.length,
+      answerChars: answer.length,
+      durationMs: Math.round(performance.now() - startAt),
+    })
     return { answer, references }
   } catch (error) {
+    trackEvent('rag_answer_failed', {
+      mode: 'normal',
+      questionChars: question.length,
+      durationMs: Math.round(performance.now() - startAt),
+      error: String(error?.message || error),
+    })
     console.error('通义千问 API 调用失败：', error)
     throw error
   }
@@ -113,46 +141,20 @@ export { askWithRAG }
  */
 const askWithRAGStream = async (question, chatHistory = [], onChunk) => {
   if (!question.trim()) return { answer: '', references: [] }
+  const startAt = performance.now()
 
   // 1. 向量检索
   let references = []
   let context = ''
   try {
     references = await searchSimilar(question, TOP_K)
-    if (references.length > 0) {
-      context = references
-        .map((r, i) => `[${i + 1}] 来源：${r.source}\n内容：${r.text}`)
-        .join('\n\n')
-    }
+    context = buildContext(references)
   } catch (err) {
     console.warn('向量检索失败：', err)
   }
 
   // 2. 构建 messages
-  const messages = []
-  if (context) {
-    messages.push({
-      role: 'system',
-      content: `你是一个知识库问答助手。请根据以下知识库资料回答用户问题。
-回答时请在相关内容后标注引用编号（如 [1]、[2]），方便用户溯源。
-如果资料中没有相关信息，请如实说明"知识库中未找到相关信息"。
-
-知识库资料：
-${context}`
-    })
-  } else {
-    messages.push({
-      role: 'system',
-      content: '你是一个智能问答助手。当前知识库为空，请基于你的通用知识回答问题，并提示用户可以上传文档来获得更精准的回答。'
-    })
-  }
-
-  const recentHistory = chatHistory.slice(-MAX_HISTORY_ROUNDS)
-  for (const item of recentHistory) {
-    messages.push({ role: 'user', content: item.question })
-    messages.push({ role: 'assistant', content: item.answer })
-  }
-  messages.push({ role: 'user', content: question })
+  const messages = buildMessages(question, context, chatHistory)
 
   // 3. 流式调用
   try {
@@ -166,10 +168,47 @@ ${context}`
       },
     }, onChunk)
 
+    trackEvent('rag_answer_success', {
+      mode: 'stream',
+      questionChars: question.length,
+      referencesCount: references.length,
+      answerChars: answer?.length || 0,
+      durationMs: Math.round(performance.now() - startAt),
+      fallback: false,
+    })
     return { answer: answer || '抱歉，未能获取到有效的回答。', references }
   } catch (error) {
-    console.error('通义千问流式调用失败：', error)
-    throw error
+    // 用户主动中断时，不做降级请求，避免重复消耗
+    if (error?.name === 'AbortError') throw error
+
+    // 流式失败时降级为非流式，保证用户至少拿到可用答案
+    try {
+      const data = await callDashScope(CHAT_PATH, {
+        model: 'qwen-turbo',
+        input: { messages },
+        parameters: { temperature: 0.7, max_tokens: 1500 },
+      })
+      const answer = data.output?.text || '抱歉，未能获取到有效的回答。'
+      if (typeof onChunk === 'function') onChunk(answer)
+      trackEvent('rag_answer_success', {
+        mode: 'stream',
+        questionChars: question.length,
+        referencesCount: references.length,
+        answerChars: answer.length,
+        durationMs: Math.round(performance.now() - startAt),
+        fallback: true,
+      })
+      return { answer, references }
+    } catch (fallbackErr) {
+      trackEvent('rag_answer_failed', {
+        mode: 'stream',
+        questionChars: question.length,
+        durationMs: Math.round(performance.now() - startAt),
+        error: String(fallbackErr?.message || fallbackErr),
+      })
+      console.error('通义千问流式调用失败，且降级失败：', fallbackErr)
+      throw fallbackErr
+    }
   }
 }
 

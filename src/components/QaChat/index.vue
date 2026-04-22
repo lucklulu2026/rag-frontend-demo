@@ -9,8 +9,10 @@
     <ChatTopBar
       :has-chat="hasChat && !loading"
       :summarizing="summarizing"
+      :auto-summarize-enabled="ragStore.autoSummarizeEnabled"
       @toggle-sidebar="$emit('toggle-sidebar')"
       @summarize="handleSummarize"
+      @toggle-auto-summary="handleToggleAutoSummary"
     />
 
     <!-- 欢迎页（无对话时） -->
@@ -42,11 +44,12 @@
       :loading="summarizing"
       @close="showSummary = false"
     />
+    <TelemetryPanel :visible="showTelemetryPanel" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRagStore } from '../../store/ragStore.js'
 import { askWithRAG, askWithRAGStream, summarizeChat } from '../../utils/services/llm.js'
 import { toast } from '../../utils/tools/toast.js'
@@ -56,6 +59,7 @@ import ChatWelcome from './ChatWelcome.vue'
 import ChatMessages from './ChatMessages.vue'
 import ChatInput from './ChatInput.vue'
 import SummaryModal from './SummaryModal.vue'
+import TelemetryPanel from '../common/TelemetryPanel.vue'
 
 defineEmits(['toggle-sidebar'])
 
@@ -73,6 +77,9 @@ const hasChat = computed(() => ragStore.currentChat.length > 0 || !!pendingQuest
 const showSummary = ref(false)
 const summaryContent = ref('')
 const summarizing = ref(false)
+const summaryHintShownForSessionId = ref('')
+const autoSummaryRunningSessionId = ref('')
+const showTelemetryPanel = import.meta.env.DEV
 
 const handleSummarize = async () => {
   if (summarizing.value || !ragStore.currentChat.length) return
@@ -91,9 +98,36 @@ const handleSummarize = async () => {
   }
 }
 
+const runAutoSummaryIfNeeded = async () => {
+  const sessionId = ragStore.currentSessionId
+  if (!sessionId || !ragStore.autoSummarizeEnabled || !ragStore.currentSessionNeedSummary) return
+  if (autoSummaryRunningSessionId.value === sessionId) return
+  if (loading.value || summarizing.value) return
+
+  autoSummaryRunningSessionId.value = sessionId
+  try {
+    const summary = await summarizeChat(ragStore.currentChat)
+    await ragStore.compressSessionWithSummary(sessionId, summary, 3)
+    toast.info('已自动压缩当前会话上下文')
+  } catch (error) {
+    console.error('自动摘要失败：', error)
+  } finally {
+    autoSummaryRunningSessionId.value = ''
+  }
+}
+
+const handleToggleAutoSummary = () => {
+  ragStore.setAutoSummarizeEnabled(!ragStore.autoSummarizeEnabled)
+  toast.info(`自动摘要已${ragStore.autoSummarizeEnabled ? '开启' : '关闭'}`)
+}
+
 /** 发送提问（流式输出） */
 const handleAsk = async () => {
   if (!question.value.trim() || loading.value) return
+  if (question.value.length > 1200) {
+    toast.info('问题过长，请精简到 1200 字以内')
+    return
+  }
   loading.value = true
   const q = question.value
   question.value = ''
@@ -180,9 +214,32 @@ const handleKeydown = (e) => {
     ragStore.newChat()
     onNewChat()
   }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'm') {
+    e.preventDefault()
+    handleToggleAutoSummary()
+  }
 }
 onMounted(() => window.addEventListener('keydown', handleKeydown))
 onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
+
+watch(
+  () => [ragStore.currentSessionId, ragStore.currentSessionNeedSummary],
+  ([sessionId, needSummary]) => {
+    if (!sessionId || !needSummary) return
+    if (summaryHintShownForSessionId.value === sessionId) return
+    summaryHintShownForSessionId.value = sessionId
+    toast.info('当前对话已较长，建议点击顶部“总结”压缩上下文')
+  },
+  { immediate: true }
+)
+
+watch(
+  () => [ragStore.currentSessionId, ragStore.currentSessionNeedSummary, ragStore.autoSummarizeEnabled],
+  () => {
+    runAutoSummaryIfNeeded()
+  },
+  { immediate: true }
+)
 
 defineExpose({ onNewChat, onSwitchSession })
 </script>

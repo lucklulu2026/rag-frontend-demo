@@ -136,8 +136,17 @@ const smartChunkText = (text, { chunkSize = 300, overlap = 50 } = {}) => {
  * @returns {Promise<{text: string, vector: number[]}[]>} 文本+向量对
  */
 const generateVectorsForChunks = async (textChunks) => {
-  const vectors = await embedding.embedBatch(textChunks)
-  return textChunks.map((chunk, i) => ({ text: chunk, vector: vectors[i] }))
+  const uniqueChunks = []
+  const seen = new Set()
+  for (const chunk of textChunks) {
+    const normalized = normalizeText(chunk)
+    if (!normalized || seen.has(normalized)) continue
+    seen.add(normalized)
+    uniqueChunks.push(chunk)
+  }
+
+  const vectors = await embedding.embedBatch(uniqueChunks)
+  return uniqueChunks.map((chunk, i) => ({ text: chunk, vector: vectors[i] }))
 }
 
 /**
@@ -248,6 +257,69 @@ const reciprocalRankFusion = (rankings, k = 60) => {
 
 /** @type {number} 向量相似度阈值，低于此值的结果被过滤 */
 const SIMILARITY_THRESHOLD = 0.35
+/** @type {number} MMR 多样化参数（越大越偏相关性，越小越偏去重） */
+const MMR_LAMBDA = 0.75
+/** @type {number} 单文档最大入选片段数 */
+const MAX_PER_SOURCE = 2
+
+const normalizeText = (text) => text.replace(/\s+/g, ' ').trim()
+
+const getDynamicTopK = (query, fallbackTopK = 3) => {
+  const len = query.trim().length
+  if (!len) return fallbackTopK
+  if (len <= 10) return 3
+  if (len <= 30) return 4
+  return 5
+}
+
+/**
+ * MMR 选择，减少结果冗余
+ * @param {{index: number, relevance: number, vector: number[], source: string}[]} candidates
+ * @param {number} topK
+ * @returns {number[]} 选中的候选 index 列表（指向 candidates）
+ */
+const selectByMMR = (candidates, topK) => {
+  if (candidates.length <= topK) return candidates.map((_, i) => i)
+  const selected = []
+  const remaining = candidates.map((_, i) => i)
+  const sourceCount = {}
+
+  remaining.sort((a, b) => candidates[b].relevance - candidates[a].relevance)
+  const first = remaining.shift()
+  selected.push(first)
+  sourceCount[candidates[first].source] = 1
+
+  while (selected.length < topK && remaining.length > 0) {
+    let bestIdx = -1
+    let bestScore = -Infinity
+
+    for (const r of remaining) {
+      const candidate = candidates[r]
+      const currentSourceCount = sourceCount[candidate.source] || 0
+      if (currentSourceCount >= MAX_PER_SOURCE) continue
+
+      let maxSimilarityToSelected = 0
+      for (const s of selected) {
+        const sim = cosineSimilarity(candidate.vector, candidates[s].vector)
+        if (sim > maxSimilarityToSelected) maxSimilarityToSelected = sim
+      }
+
+      const mmrScore = MMR_LAMBDA * candidate.relevance - (1 - MMR_LAMBDA) * maxSimilarityToSelected
+      if (mmrScore > bestScore) {
+        bestScore = mmrScore
+        bestIdx = r
+      }
+    }
+
+    if (bestIdx === -1) break
+    selected.push(bestIdx)
+    sourceCount[candidates[bestIdx].source] = (sourceCount[candidates[bestIdx].source] || 0) + 1
+    const removeIndex = remaining.indexOf(bestIdx)
+    if (removeIndex > -1) remaining.splice(removeIndex, 1)
+  }
+
+  return selected
+}
 
 /**
  * 混合检索：向量语义 + BM25 关键词，RRF 融合排序
@@ -255,9 +327,10 @@ const SIMILARITY_THRESHOLD = 0.35
  * @param {number} [topK=3] - 返回结果数量
  * @returns {Promise<SearchResult[]>} 检索结果（按融合分数降序）
  */
-const searchSimilar = async (query, topK = 3) => {
+const searchSimilar = async (query, topK) => {
   const allVectors = await db.vectors.toArray()
   if (allVectors.length === 0) return []
+  const finalTopK = topK || getDynamicTopK(query, 3)
 
   const queryVector = await embedding.embedQuery(query)
   const vectorScores = allVectors.map((item, i) => ({ id: i, score: cosineSimilarity(queryVector, item.vector) }))
@@ -266,15 +339,34 @@ const searchSimilar = async (query, topK = 3) => {
   const fusedScores = reciprocalRankFusion([vectorScores, keywordScores])
 
   const results = allVectors.map((item, i) => ({
+    index: i,
     text: item.text,
     source: item.fileName,
+    vector: item.vector,
     score: vectorScores[i].score,
     bm25Score: bm25Scores[i],
     fusedScore: fusedScores[i] || 0,
   }))
 
-  results.sort((a, b) => b.fusedScore - a.fusedScore)
-  return results.filter(r => r.score >= SIMILARITY_THRESHOLD).slice(0, topK)
+  const filtered = results
+    .filter(r => r.score >= SIMILARITY_THRESHOLD)
+    .sort((a, b) => b.fusedScore - a.fusedScore)
+    .slice(0, Math.max(finalTopK * 3, finalTopK))
+
+  const mmrCandidates = filtered.map(item => ({
+    index: item.index,
+    relevance: item.fusedScore,
+    vector: item.vector,
+    source: item.source,
+  }))
+  const selected = selectByMMR(mmrCandidates, finalTopK)
+  const selectedSet = new Set(selected.map(i => mmrCandidates[i].index))
+
+  return filtered
+    .filter(item => selectedSet.has(item.index))
+    .sort((a, b) => b.fusedScore - a.fusedScore)
+    .slice(0, finalTopK)
+    .map(({ vector, index, ...rest }) => rest)
 }
 
 /**
