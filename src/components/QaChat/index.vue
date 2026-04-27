@@ -21,6 +21,7 @@
       v-model="question"
       :loading="loading"
       @send="handleAsk"
+      @update:search-filter="searchFilter = $event"
     />
 
     <!-- 对话区（有对话时） -->
@@ -69,6 +70,8 @@ const loading = ref(false)
 const pendingQuestion = ref('')
 /** @type {import('vue').Ref<string>} 正在流式生成的 AI 回答文本 */
 const streamingText = ref('')
+/** @type {import('vue').Ref<string[]|null>} 精确检索的文件名过滤列表 */
+const searchFilter = ref(null)
 const messagesRef = ref(null)
 
 const hasChat = computed(() => ragStore.currentChat.length > 0 || !!pendingQuestion.value || loading.value)
@@ -140,10 +143,10 @@ const handleAsk = async () => {
       q,
       ragStore.currentChat,
       (text) => {
-        // 每收到一段文本，更新流式显示
         streamingText.value = text
         messagesRef.value?.scrollToBottom()
-      }
+      },
+      { fileNames: searchFilter.value }
     )
     // 流式结束，保存完整消息
     if (answer) await ragStore.addMessage(q, answer, references)

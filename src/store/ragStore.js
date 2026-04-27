@@ -218,14 +218,25 @@ export const useRagStore = defineStore('rag', {
       await db.documents.delete(fileName)
     },
 
+    async updateDocTag(fileName, newTag) {
+      const doc = this.documentList.find(d => d.fileName === fileName)
+      if (doc) {
+        doc.tag = newTag
+        this.addTag(newTag)
+        await db.documents.put(toRaw(doc))
+      }
+    },
+
     async deleteTag(tag) {
       if (tag === '默认') return
+      // 把该标签下的所有文档移到默认，并持久化
       for (const doc of this.documentList) {
         if (doc.tag === tag) {
           doc.tag = '默认'
-          await db.documents.put({ ...doc })
+          await db.documents.put(toRaw(doc))
         }
       }
+      // 从标签列表中移除
       this.tags = this.tags.filter(t => t !== tag)
     },
   }

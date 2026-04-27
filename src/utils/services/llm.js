@@ -139,7 +139,7 @@ export { askWithRAG }
  * @param {(text: string) => void} onChunk - 每次收到新文本时的回调
  * @returns {Promise<{answer: string, references: SearchResult[]}>}
  */
-const askWithRAGStream = async (question, chatHistory = [], onChunk) => {
+const askWithRAGStream = async (question, chatHistory = [], onChunk, { fileNames } = {}) => {
   if (!question.trim()) return { answer: '', references: [] }
   const startAt = performance.now()
 
@@ -147,7 +147,7 @@ const askWithRAGStream = async (question, chatHistory = [], onChunk) => {
   let references = []
   let context = ''
   try {
-    references = await searchSimilar(question, TOP_K)
+    references = await searchSimilar(question, TOP_K, { fileNames })
     context = buildContext(references)
   } catch (err) {
     console.warn('向量检索失败：', err)

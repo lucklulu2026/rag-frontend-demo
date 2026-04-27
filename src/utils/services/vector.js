@@ -327,8 +327,12 @@ const selectByMMR = (candidates, topK) => {
  * @param {number} [topK=3] - 返回结果数量
  * @returns {Promise<SearchResult[]>} 检索结果（按融合分数降序）
  */
-const searchSimilar = async (query, topK) => {
-  const allVectors = await db.vectors.toArray()
+const searchSimilar = async (query, topK, { fileNames } = {}) => {
+  let allVectors = await db.vectors.toArray()
+  // 按文件名过滤（精确检索模式）
+  if (fileNames && fileNames.length > 0) {
+    allVectors = allVectors.filter(v => fileNames.includes(v.fileName))
+  }
   if (allVectors.length === 0) return []
   const finalTopK = topK || getDynamicTopK(query, 3)
 
