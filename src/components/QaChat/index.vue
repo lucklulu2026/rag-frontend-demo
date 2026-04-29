@@ -54,6 +54,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRagStore } from '../../store/ragStore.js'
 import { askWithRAG, askWithRAGStream, summarizeChat } from '../../utils/services/llm.js'
 import { toast } from '../../utils/tools/toast.js'
+import { trackAnalyticsEvent } from '../../utils/tools/analytics.js'
 
 import ChatTopBar from './ChatTopBar.vue'
 import ChatWelcome from './ChatWelcome.vue'
@@ -136,6 +137,12 @@ const handleAsk = async () => {
   question.value = ''
   pendingQuestion.value = q
   streamingText.value = ''
+
+  trackAnalyticsEvent('chat_send', {
+    input_length: q.length,
+    has_file_filter: Array.isArray(searchFilter.value) && searchFilter.value.length > 0,
+    session_id: ragStore.currentSessionId || 'unknown',
+  })
 
   try {
     // 先做向量检索，再流式调用大模型

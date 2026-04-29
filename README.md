@@ -47,9 +47,16 @@ npm install
 
 ```
 VITE_TONGYI_API_KEY=你的通义千问API Key
+VITE_GA_MEASUREMENT_ID=你的GA4统计ID（可选，例如 G-XXXXXXXXXX）
+# 以下变量由 Vercel KV 连接项目后自动注入（本地可通过 vercel env pull 获取）
+# KV_URL=
+# KV_REST_API_URL=
+# KV_REST_API_TOKEN=
+# KV_REST_API_READ_ONLY_TOKEN=
 ```
 
 API Key 申请地址：[阿里云 DashScope](https://dashscope.console.aliyun.com/)
+GA4 创建入口：[Google Analytics](https://analytics.google.com/)
 
 ### 3. 启动开发服务器
 
@@ -58,6 +65,48 @@ npm run dev
 ```
 
 访问 `http://localhost:5173`，首页是产品介绍页，点击"开始体验"进入主应用。
+
+## 访问与对话统计
+
+项目已内置事件统计（优先写入 Vercel KV）：
+
+- `site_visit`：用户打开站点
+- `chat_send`：用户发送一次提问
+
+### 如何启用
+
+#### 方案 A：Vercel KV（推荐，国内可用）
+
+1. 在 Vercel 项目中创建并连接 KV 数据库
+2. 本地执行：
+
+```bash
+vercel link
+vercel env pull .env.local
+```
+
+3. 重新部署（或本地使用 `vercel dev`）
+
+#### 方案 B：GA4（可选）
+
+在 `.env` 中配置 `VITE_GA_MEASUREMENT_ID` 后，会额外上报到 GA4。
+
+### 在哪里查看
+
+- KV 统计接口：`/api/stats`
+- 示例返回：
+
+```json
+{
+  "date": "2026-04-29",
+  "stats": {
+    "site_visit": { "total": 123, "today": 19 },
+    "chat_send": { "total": 456, "today": 67 }
+  }
+}
+```
+
+- 若启用 GA4：在 GA4 后台的 **事件** 中查看 `chat_send`
 
 ## 使用方式
 
